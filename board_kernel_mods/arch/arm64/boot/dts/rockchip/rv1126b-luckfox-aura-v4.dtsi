@@ -1,0 +1,93 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * rv1126b-luckfox-aura-v4.dtsi —— V4 自研板板级差异: 千兆以太网 + SD3.0 (2026-08-31)
+ *
+ * ★只在烧 V4 自研板时 include 本文件; V2/V3 板必须注释掉★
+ * (V2/V3 无 PHY 无 SD 切压电路, 本文件的 GPIO 操作对它们无意义但也无害,
+ *  真正的原因是保持"一板一配置"的清晰性)
+ *
+ * ============ 千兆以太网 (RTL8211F-CG, RGMII, ethm1 引脚组) ============
+ * 硬件(V4 网表核对):
+ *   U9 = RTL8211F-CG(QFN-40), 自带 25MHz 晶振 X6 → 不需要 SoC 出 mclk
+ *   RGMII 数据/时钟 = GMAC_*_M1 复用(GPIO5_A0/B0~B2/B5~B7/C0/C2~C7), RXD0-3 串 RN1 22Ω
+ *   MDC=U1.F16 / MDIO=U1.D13(R28 1.5k 上拉) / nRST=U1.E14(R9 10k 上拉+C26, RC 自复位)
+ *   nINT=U1.G2(未用, 轮询模式)
+ * 配置要点:
+ *   phy-mode = "rgmii-id": 收发延时都由 RTL8211F 内部提供(REALTEK_PHY 驱动按
+ *     interface 自动配), 免板级 tx_delay/rx_delay 调参 —— bring-up 首选。
+ *     若换成 "rgmii" 手动调延时, 参考起点 tx_delay=<0x2a> rx_delay=<0x1a>。
+ *   PHY 地址: RTL8211F 悬空 strap 默认 PHYAD=1; 若 dmesg 显示 mdio 扫到别的地址,
+ *     改下面 ethernet-phy@N 的 N 和 reg 即可。
+ *   复位: 板上 RC 已保证上电自复位; snps,reset-gpio 提供软复位(球 E14=GPIO5_B3,
+ *     依据 MYZR EVB 把 PHY 复位挂在 GPIO5_B3_D 焊盘; 若无效不影响 RC 上电复位)。
+ * 内核配置依赖: CONFIG_REALTEK_PHY=y (rv1126b_luckfox_defconfig 已同步添加)
+ *
+ * ============ SD3.0 (UHS-I SDR104) ============
+ * 硬件: SDMMC0_VOL_CTRL(U1.A12) 控制 Q1/U7 把 VCCIO_SD 在 3.3V/1.8V 间切换
+ *   (MYZR 手册: VOL_CTRL=H → 3.34V 默认; =L → 1.816V)
+ * 配置: 把基础 dtsi 的 vccio_sd 从"固定 3.3V"覆写成 regulator-gpio,
+ *   内核 UHS 协商时自动拉低切 1.8V; sdmmc0 增加 sd-uhs-* 能力位并提频 200MHz。
+ *   GPIO = GPIO0_A6(依据: 与 MYZR 同源的 Rockchip EVB1 参考设计即 GPIO0_A6 + 同语义
+ *   states)。若插卡后 dmesg 报 "voltage switch failed" → 万用表量 VCCIO_SD 是否
+ *   随之切 1.8V, 不切则核对球 A12 的 GPIO 映射。
+ * 验收: sh selfcheck_sd.sh → timing 必须显示 sdr104, 顺序读 ≥60MB/s。
+ */
+
+/* ================= SD3.0: vccio_sd 覆写为可切压 ================= */
+&vccio_sd {
+	compatible = "regulator-gpio";
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <3300000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&sdmmc0_volt_ctrl>;
+	gpios = <&gpio0 RK_PA6 GPIO_ACTIVE_HIGH>;
+	states = <1800000 0x0
+	          3300000 0x1>;        /* 低=1.8V, 高=3.3V —— 与 MYZR 文档一致 */
+};
+
+&sdmmc0 {
+	max-frequency = <200000000>;   /* SDR104 档(与 RK EVB 参考一致) */
+	sd-uhs-sdr50;
+	sd-uhs-sdr104;
+};
+
+/* ================= 千兆以太网 =================
+ * 基础 dtsi(rv1126b-luckfox-aura.dtsi)已有开发板的完整 RTL8211F RGMII 配置
+ * (ethm0 引脚 + SoC 出 25M 给 PHY + gpio6_B6 复位)。V4 只覆写三处差异:
+ *   ① 引脚组 ethm0 → ethm1(MYZR SoM 内部键合的是芯片 M1 复用组),
+ *      且去掉 eth_clk_25m 输出脚(V4 的 PHY 用自己的 25M 晶振 X6);
+ *   ② phy-mode "rgmii"+手动tx_delay → "rgmii-id"(RTL8211F 内部收发延时,
+ *      由 REALTEK_PHY 驱动按 interface 自动配, 免板级调参);
+ *   ③ 复位脚 → GPIO5_B3(球 E14; 板上另有 R9+C26 RC 上电自复位兜底)。
+ * PHY 节点(rgmii_phy: phy@1, 地址 1)与 phy-handle 沿用基础 dtsi 的定义。 */
+/delete-node/ &rgmii_phy;      /* 基础 dtsi 的 phy@1 地址不对, 删掉重建 */
+
+&mdio {
+	rgmii_phy_v4: phy@0 {
+		compatible = "ethernet-phy-ieee802.3-c22";
+		reg = <0x0>;           /* ★实测★ V4 板 RTL8211F strap 地址=0
+					  (devmem 扫 MDIO: 地址0 ID=0x001CC916) */
+	};
+};
+
+&gmac {
+	phy-handle = <&rgmii_phy_v4>;
+	phy-mode = "rgmii-id";
+	pinctrl-names = "default";
+	pinctrl-0 = <&ethm1_miim_pins
+	             &ethm1_tx_bus2_pins
+	             &ethm1_rx_bus2_pins
+	             &ethm1_rgmii_clk_pins
+	             &ethm1_rgmii_bus_pins>;
+	snps,reset-gpio = <&gpio5 RK_PB3 GPIO_ACTIVE_LOW>;
+};
+
+/* ================= 引脚 ================= */
+&pinctrl {
+	sdmmc0-v4 {
+		sdmmc0_volt_ctrl: sdmmc0-volt-ctrl {
+			/* 上拉默认高 = 3.3V, 上电先按 SD2.0 兼容枚举 */
+			rockchip,pins = <0 RK_PA6 RK_FUNC_GPIO &pcfg_pull_up>;
+		};
+	};
+};

@@ -1,0 +1,178 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Copyright (c) 2025 Rockchip Electronics Co., Ltd.
+ */
+
+/dts-v1/;
+#include "rv1126b.dtsi"
+#include "rv1126b-aoa.dtsi"
+#include "rv1126b-luckfox-aura.dtsi"
+#include "rv1126b-luckfox-aura-dsi.dtsi"
+/* 摄像头配置: 以下选一(都用到 dphy0/rkisp_vir0, 互斥) */
+//#include "rv1126b-luckfox-aura-cam-csi0.dtsi"
+//#include "rv1126b-luckfox-aura-cam-csi1.dtsi"
+//#include "rv1126b-luckfox-aura-dual-cam.dtsi"                  /* 双 IMX415 开发板+原厂模组(0x37/37.125M, 配imx415.c档位A) */
+//#include "rv1126b-luckfox-aura-dual-cam-daq.dtsi"            /* 双 IMX415 自研板+自研模组: i2c3/i2c4对调 + 0x1a + 27M(无硬同步版) */
+//#include "rv1126b-luckfox-aura-dual-cam-daq-hwsync.dtsi"     /* V2/V3板: cam0主/cam1从 XVS 硬同步(烧V3时启用这行, 注释下面两行) */
+#include "rv1126b-luckfox-aura-dual-cam-daq-mcusync.dtsi"        /* ★V4板当前: 双摄全从, XVS 由 STM32 供(配 glove_daqV4) */
+//#include "rv1126b-luckfox-aura-dual-cam-devmod.dtsi"            /* 开发板接线 + 自研模组(0x1a/27M), 配imx415.c档位C */
+//#include "rv1126b-luckfox-aura-imx477.dtsi"                    /* 单 IMX477 (验证用) */
+//#include "rv1126b-luckfox-aura-imx477-imx415-dual.dtsi"        /* 异构双摄: IMX477(vir0)+IMX415(vir1) */
+/* ★hwsync 暂勿启用(2026-08-05):它内部 #include 的是老 dual-cam.dtsi(0x37/37.125M),
+ * 与上面 daq.dtsi(0x1a/27M)同开会被"后写的赢"覆盖回 37.125M → D档匹配失败不出图;
+ * 且 imx415.c 的主从同步驱动还没写(见 XVS_HWSYNC_DESIGN.md)。
+ * V2 硬件已把 cam0.XVS/XHS→cam1 连好,待做驱动时新建 hwsync-daq.dtsi 再启用。 */
+//#include "rv1126b-luckfox-aura-dual-cam-hwsync.dtsi"           /* 双 IMX415 + XVS 硬件主从同步 (预研; 需驱动支持+硬件引出XVS) */
+/* USB 配置: 自研板(无 HUSB311 Type-C 芯片)启用下行, OTG 写死从机模式;
+ * 烧 Luckfox 开发板时注释掉下行(恢复 otg + Type-C 自动切换) */
+#include "rv1126b-luckfox-aura-usb-peripheral.dtsi"             /* 自研板 USB peripheral;★开发板必须注释掉★(它有HUSB311,走正常OTG,写死从机会影响adb) */
+/* V4 板级差异: 千兆ETH(RTL8211F/RGMII) + SD3.0(UHS/切压)。★烧 V2/V3 板时注释掉本行★ */
+#include "rv1126b-luckfox-aura-v4.dtsi"
+
+/ {
+	model = "Luckfox Aura";
+	compatible = "rockchip,rv1126b-evb1-v11", "rockchip,rv1126b";
+
+	chosen {
+		bootargs = "earlycon=uart8250,mmio32,0x20810000 console=ttyFIQ0 rw root=PARTUUID=614e0000-0000 rootfstype=ext4 rootwait snd_soc_core.prealloc_buffer_size_kbytes=16 coherent_pool=32K";
+	};
+
+	sdio_pwrseq: sdio-pwrseq {
+		compatible = "mmc-pwrseq-simple";
+		pinctrl-names = "default";
+		pinctrl-0 = <&wifi_enable_h &pcm_out>;
+		post-power-on-delay-ms = <200>;
+		reset-gpios = <&gpio3 RK_PB6 GPIO_ACTIVE_LOW>;
+	};
+
+	wireless-bluetooth {
+		compatible = "bluetooth-platdata";
+		uart_rts_gpios = <&gpio3 RK_PA6 GPIO_ACTIVE_LOW>;
+		pinctrl-names = "default", "rts_gpio";
+		pinctrl-0 = <&uart2m0_rtsn_pins &bt_poweren_gpio>;
+		pinctrl-1 = <&uart2_gpios &bt_poweren_gpio>;
+		BT,wake_gpio     = <&gpio0 RK_PB0 GPIO_ACTIVE_HIGH>;
+		BT,wake_host_irq = <&gpio0 RK_PB1 GPIO_ACTIVE_HIGH>;
+		//BT,power_gpio     = <&gpio3 RK_PB7 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+	};
+
+	wireless-wlan {
+		compatible = "wlan-platdata";
+		rockchip,grf = <&grf>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&wifi_wake_host>;
+		WIFI,host_wake_irq = <&gpio0 RK_PA7 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+	};
+};
+
+/**********MEDIA**********/
+&emmc {
+	bus-width = <8>;
+	cap-mmc-highspeed;
+	non-removable;
+	//mmc-hs200-1_8v;
+	rockchip,default-sample-phase = <90>;
+	no-sdio;
+	no-sd;
+	status = "okay";
+};
+
+&fspi0 {
+	status = "disabled";
+
+	flash@0 {
+		status = "disabled";
+		compatible = "spi-nand";
+		reg = <0>;
+		spi-max-frequency = <40000000>;
+		spi-rx-bus-width = <4>;
+		spi-tx-bus-width = <1>;
+	};
+};
+
+/**********SDMMC**********/
+&sdmmc0 {
+	/* 200M 供 V4 的 SDR104 用(本行在 include 之后, 会盖过 v4.dtsi 里的同名属性,
+	 * 故直接写在这里)。V3 无 sd-uhs 能力位, 内核按 HS 档自动封顶 50M, 不受影响。 */
+	max-frequency = <200000000>;
+	no-sdio;
+	no-mmc;
+	bus-width = <4>;
+	cap-mmc-highspeed;
+	cap-sd-highspeed;
+	disable-wp;
+	vmmc-supply = <&vcc_sd>;
+	vqmmc-supply = <&vccio_sd>;
+	pinctrl-names = "default";
+
+	pinctrl-0 = <&sdmmc0_clk_pins &sdmmc0_cmd_pins &sdmmc0_detn_pins &sdmmc0_bus4_pins &sdmmc0_pwren>;
+	status = "okay";
+};
+
+&pinctrl {
+	sdmmc0 {
+		sdmmc0_pwren: sdmmc0-pwren {
+			rockchip,pins = <0 RK_PB2 RK_FUNC_GPIO &pcfg_pull_down>;
+		};
+	};
+};
+
+/**********WiFi / BT**********/
+&sdmmc1 {
+	bus-width = <4>;
+
+	cap-sd-highspeed;
+	supports-highspeed;
+	cap-sdio-irq;
+
+	no-sd;
+	no-mmc;
+	max-frequency = <150000000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&sdmmc1_clk_pins &sdmmc1_cmd_pins &sdmmc1_bus4_pins>;
+	disable-wp;
+
+	keep-power-in-suspend;
+	non-removable;
+
+	mmc-pwrseq = <&sdio_pwrseq>;
+	sd-uhs-sdr104;
+	status = "okay";
+};
+
+&uart2 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart2m0_xfer_pins &uart2m0_ctsn_pins>;
+};
+
+/**********PINCTRL**********/
+&pinctrl {
+	sdio-pwrseq {
+		wifi_enable_h: wifi-enable-h {
+			rockchip,pins = <3 RK_PB6 RK_FUNC_GPIO &pcfg_pull_up>;
+		};
+
+		pcm_out: pcm-out {
+			rockchip,pins = <3 RK_PB3 RK_FUNC_GPIO &pcfg_pull_up>;
+		};
+	};
+
+	wireless-bluetooth {
+		uart2_gpios: uart2-gpios {
+			rockchip,pins = <3 RK_PA6 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+
+		bt_poweren_gpio: bt-poweren-gpio {
+			rockchip,pins = <3 RK_PB7 RK_FUNC_GPIO &pcfg_pull_up>;
+		};
+	};
+
+	wireless-wlan {
+		wifi_wake_host: wifi-wake-host {
+			rockchip,pins = <0 RK_PA7 RK_FUNC_GPIO &pcfg_pull_up>;
+		};
+	};
+};

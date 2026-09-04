@@ -1,0 +1,35 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * rv1126b-luckfox-aura-dual-cam-daq-mcusync.dtsi —— V4 自研板双摄同步配置 (2026-08-31)
+ *
+ * 【拓扑】XVS 时基源 = STM32(PB10, 60Hz 低有效窄脉冲) → TXS0101(3.3V→1.8V)
+ *         → CSI0_XVS 网 → 同时喂 P1/P2 两个相机座:
+ *   cam0(imx415_0, i2c3, CSI0 座) = slave : XVS Hi-Z 输入
+ *   cam1(imx415_1, i2c4, CSI1 座) = slave : XVS Hi-Z 输入
+ *   ── 与 V2/V3 的"cam0 主/cam1 从"(dual-cam-daq-hwsync.dtsi)互斥, 二选一 ──
+ *
+ * 【依据】XVS-only 已实测成立(2026-08-13, V2 活体: 主机 XHS 切 Hi-Z 后
+ *   dpts 仍恒 -6µs)——从机行时序内部自给, 单根 XVS 即可帧级同步, XHS 不需要。
+ *   驱动 imx415.c 的 SLAVE_MODE 路径(XMASTER=1 + SYNCDRV=HiZ + XMSTA=STOP)
+ *   正好就是"等外部 XVS", 驱动零改动。
+ *
+ * 【软件配套】glove_daqV4 的 hw_sync_setup() 认"0 主 + 2 从"= MCU 外同步就绪。
+ *   老程序(dual_cam/glove_daq)探测不到 1主1从会退回软同步——相机仍能出图
+ *   (真从机无 XVS 时自由跑), 只是不硬同步, 不算坏。
+ *
+ * 【时序提醒】TSYNC: 相机 STANDBY=0 → ≥24ms → XVS 才可到来(手册 L13317)。
+ *   STM32 常发 XVS 时相机属于"中途加入"(设计稿 R4), 大概率 8 帧内锁上;
+ *   保险做法: RV 开流后经 SPI 命令字要求 STM32 重启 XVS 序列。
+ *
+ * 【回退】V3 板: 主 dts 里把 include 换回 dual-cam-daq-hwsync.dtsi 即可。
+ */
+
+#include "rv1126b-luckfox-aura-dual-cam-daq.dtsi"
+
+&imx415_0 {
+	rockchip,camera-module-sync-mode = "slave";
+};
+
+&imx415_1 {
+	rockchip,camera-module-sync-mode = "slave";
+};

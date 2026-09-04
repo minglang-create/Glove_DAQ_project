@@ -1,0 +1,454 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * rv1126b-luckfox-aura-dual-cam-daq.dtsi
+ * —— ★自研 DAQ 板专用★ 双 IMX415 配置(I2C 总线按自研板实际接线对调)
+ *
+ * 【为什么要有这个文件】(2026-07-03)
+ *   自研板(MYZR RV1126B 核心板 + 自研扩展板)的 I2C 接法和 Luckfox 开发板相反:
+ *     Luckfox 开发板: CSI0座(→SoC RX0/dphy0) 配 I2C4;CSI1座(→RX1/dphy3) 配 I2C3
+ *     自研板:         CSI0座(→SoC RX0/dphy0) 配 I2C3;CSI1座(→RX1/dphy3) 配 I2C4
+ *   若沿用开发板的 dual-cam.dtsi,内核会把"接在自研板 CSI0 座上的相机"认成 cam1、
+ *   并期待它的数据从 RX1 进来 —— I2C 配置和 MIPI 数据来源交叉错位。
+ *   本文件 = dual-cam.dtsi 的复制版,仅把两组传感器节点在 i2c3/i2c4 之间对调,
+ *   使"自研板 CSI0 座 = cam0 = dphy0"、"CSI1 座 = cam1 = dphy3",身份与数据通路一致。
+ *
+ * 【与 dual-cam.dtsi 的差异】只有两处:
+ *   ① imx415_0 + mia1321_0(cam0, 走 dphy0)从 &i2c4 移到 &i2c3;
+ *   ② imx415_1 + mia1321_1(cam1, 走 dphy3)从 &i2c3 移到 &i2c4。
+ *   复位 GPIO 改为 GPIO4_A0(cam0)/GPIO4_A1(cam1)——2026-07-03 对照 MYZR 引脚表定案:
+ *   自研板 XCLR 接的是核心板 P14/R12 = MIPI_RX0_RST/RX1_RST = SoC GPIO4_A0/A1
+ *   (注意 MYZR 命名陷阱:GPIO4_B0/B1 在核心板上是 MIPI_MCLK_OUT1/0,不是复位!)。
+ *
+ * 【用法】在 rv1126b-luckfox-aura.dts 里与其他摄像头 dtsi 互斥选用:
+ *   烧自研板 → include 本文件;烧 Luckfox 开发板 → include dual-cam.dtsi。
+ *
+ * dphy 划分(与原文件一致):
+ *   csi2_dphy0 -> csi0(rx0) clk0 + 4 lane
+ *   csi2_dphy3 -> csi1(rx1) clk0 + 4 lane
+ */
+
+/ {
+	cam_ircut0: cam_ircut0 {
+		status = "okay";
+		compatible = "rockchip,ircut";
+		rockchip,camera-module-index = <0>;
+		rockchip,camera-module-facing = "back";
+	};
+
+	cam_ircut1: cam_ircut1 {
+		status = "okay";
+		compatible = "rockchip,ircut";
+		rockchip,camera-module-index = <1>;
+		rockchip,camera-module-facing = "back";
+	};
+
+	/* ★自研摄像头模组晶振=27MHz(非 Luckfox 模组的 37.125MHz)。
+	 * 必须与 imx415.c mode.xvclk=IMX415_XVCLK_FREQ_27M 一致,否则驱动时钟校验/PLL 不符。
+	 * out_osc_0(cam0/CSI0座) 和 out_osc_1(cam1/CSI1座) 都改,自研板两座都用 27M 自研模组。 */
+	out_osc_0: out-osc-0 {
+		compatible = "fixed-clock";
+		clock-output-names = "out-osc-0";
+		clock-frequency = <27000000>;
+		#clock-cells = <0>;
+	};
+
+	out_osc_mia1321_0: out-osc-mia1321-0 {
+		compatible = "fixed-clock";
+		clock-output-names = "out-osc-mia1321-0";
+		clock-frequency = <26000000>;
+		#clock-cells = <0>;
+	};
+
+	out_osc_1: out-osc-1 {
+		compatible = "fixed-clock";
+		clock-output-names = "out-osc-1";
+		clock-frequency = <27000000>;   /* ★自研模组 27MHz(见上 out_osc_0 注释) */
+		#clock-cells = <0>;
+	};
+
+	out_osc_mia1321_1: out-osc-mia1321-1 {
+		compatible = "fixed-clock";
+		clock-output-names = "out-osc-mia1321-1";
+		clock-frequency = <26000000>;
+		#clock-cells = <0>;
+	};
+};
+
+
+&csi2_dphy0 {
+	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		port@0 {
+			reg = <0>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			csi_dphy_input0: endpoint@1 {
+				reg = <1>;
+				remote-endpoint = <&imx415_0_out>;
+				data-lanes = <1 2 3 4>;
+			};
+
+			csi_dphy_input1: endpoint@2 {
+				reg = <2>;
+				remote-endpoint = <&mia1321_0_out>;
+				data-lanes = <1 2>;
+			};
+		};
+		port@1 {
+			reg = <1>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			csidphy0_out: endpoint@0 {
+				reg = <0>;
+				remote-endpoint = <&mipi0_csi2_input>;
+			};
+		};
+	};
+};
+
+&csi2_dphy3 {
+	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		port@0 {
+			reg = <0>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			csi_dphy3_input0: endpoint@1 {
+				reg = <1>;
+				remote-endpoint = <&imx415_1_out>;
+				data-lanes = <1 2 3 4>;
+			};
+
+			csi_dphy3_input1: endpoint@2 {
+				reg = <2>;
+				remote-endpoint = <&mia1321_1_out>;
+				data-lanes = <1 2>;
+			};
+		};
+		port@1 {
+			reg = <1>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			csidphy3_out: endpoint@0 {
+				reg = <0>;
+				remote-endpoint = <&mipi2_csi2_input>;
+			};
+		};
+	};
+};
+
+/* ★与开发板版的差异①:cam0(imx415_0, 走 dphy0/RX0)放到 i2c3 —— 自研板 CSI0 座的 I2C */
+&i2c3 {
+	status = "okay";
+	pinctrl-0 = <&i2c3m1_pins>;
+
+	/* ★自研摄像头模组(2026-07-06): I2C 地址=0x1a(SLAMODE 接法与 Luckfox 模组的 0x37 不同);
+	 * 且模组 XCLR 无上拉,依赖本节点 reset-gpios 主动拉高。插 Luckfox 旧模组(0x37)会探测不到。 */
+	imx415_0: imx415_0@1a {
+		compatible = "sony,imx415";
+		reg = <0x1a>;
+		clocks = <&out_osc_0>;
+		clock-names = "xvclk";
+		pinctrl-names = "default";
+		pinctrl-0 = <&cam_reset_gpio>;
+		reset-gpios = <&gpio4 RK_PA0 GPIO_ACTIVE_LOW>;
+		rockchip,camera-module-index = <0>;
+		rockchip,camera-module-facing = "back";
+		rockchip,camera-module-name = "default";
+		rockchip,camera-module-lens-name = "default";
+		lens-focus = <&cam_ircut0>;
+		port {
+			imx415_0_out: endpoint {
+				remote-endpoint = <&csi_dphy_input0>;
+				data-lanes = <1 2 3 4>;
+			};
+		};
+	};
+
+	mia1321_0: mia1321_0@60 {
+		compatible = "imagedesign,mia1321";
+		reg = <0x60>;
+		clocks = <&out_osc_mia1321_0>;
+		clock-names = "xvclk";
+		pinctrl-names = "default";
+		pinctrl-0 = <&cam_reset_gpio>;
+		reset-gpios = <&gpio4 RK_PA0 GPIO_ACTIVE_HIGH>;
+		rockchip,camera-module-index = <0>;
+		rockchip,camera-module-facing = "back";
+		rockchip,camera-module-name = "default";
+		rockchip,camera-module-lens-name = "default";
+		port {
+				mia1321_0_out: endpoint {
+					remote-endpoint = <&csi_dphy_input1>;
+					data-lanes = <1 2>;
+				};
+		};
+	};
+};
+
+/* ★与开发板版的差异②:cam1(imx415_1, 走 dphy3/RX1)放到 i2c4 —— 自研板 CSI1 座的 I2C */
+&i2c4 {
+	status = "okay";
+	pinctrl-0 = <&i2c4m2_pins>;
+
+	/* ★自研模组: 0x1a(同 cam0 注释) */
+	imx415_1: imx415_1@1a {
+		compatible = "sony,imx415";
+		reg = <0x1a>;
+		clocks = <&out_osc_1>;
+		clock-names = "xvclk";
+		reset-gpios = <&gpio4 RK_PA1 GPIO_ACTIVE_LOW>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&cam_1_reset_gpio>;
+		rockchip,camera-module-index = <1>;
+		rockchip,camera-module-facing = "back";
+		rockchip,camera-module-name = "default";
+		rockchip,camera-module-lens-name = "default";
+		lens-focus = <&cam_ircut1>;
+		port {
+			imx415_1_out: endpoint {
+				remote-endpoint = <&csi_dphy3_input0>;
+				data-lanes = <1 2 3 4>;
+			};
+		};
+	};
+
+	mia1321_1: mia1321_1@60 {
+		compatible = "imagedesign,mia1321";
+		reg = <0x60>;
+		clocks = <&out_osc_mia1321_1>;
+		clock-names = "xvclk";
+		reset-gpios = <&gpio4 RK_PA1 GPIO_ACTIVE_HIGH>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&cam_1_reset_gpio>;
+		rockchip,camera-module-index = <1>;
+		rockchip,camera-module-facing = "back";
+		rockchip,camera-module-name = "default";
+		rockchip,camera-module-lens-name = "default";
+		port {
+				mia1321_1_out: endpoint {
+					remote-endpoint = <&csi_dphy3_input1>;
+					data-lanes = <1 2>;
+				};
+		};
+	};
+};
+
+&pinctrl {
+	cam {
+		cam_reset_gpio: cam-reset-gpio {
+			rockchip,pins = <4 RK_PA0 RK_FUNC_GPIO &pcfg_pull_up>;
+		};
+	};
+
+	cam_1 {
+		cam_1_reset_gpio: cam-1-reset-gpio {
+			rockchip,pins = <4 RK_PA1 RK_FUNC_GPIO &pcfg_pull_up>;
+		};
+	};
+};
+
+
+&mipi0_csi2 {
+	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <0>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			mipi0_csi2_input: endpoint@1 {
+				reg = <1>;
+				remote-endpoint = <&csidphy0_out>;
+			};
+		};
+
+		port@1 {
+			reg = <1>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			mipi0_csi2_output: endpoint@0 {
+				reg = <0>;
+				remote-endpoint = <&cif_mipi_in0>;
+			};
+		};
+	};
+};
+
+&mipi2_csi2 {
+	status = "okay";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <0>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			mipi2_csi2_input: endpoint@1 {
+				reg = <1>;
+				remote-endpoint = <&csidphy3_out>;
+			};
+		};
+
+		port@1 {
+			reg = <1>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			mipi2_csi2_output: endpoint@0 {
+				reg = <0>;
+				remote-endpoint = <&cif_mipi_in2>;
+			};
+		};
+	};
+};
+
+&rkcif {
+	status = "okay";
+};
+
+&rkcif_mipi_lvds {
+	status = "okay";
+
+	port {
+		cif_mipi_in0: endpoint {
+			remote-endpoint = <&mipi0_csi2_output>;
+		};
+	};
+};
+
+&rkcif_mipi_lvds2 {
+	status = "okay";
+
+	port {
+		cif_mipi_in2: endpoint {
+			remote-endpoint = <&mipi2_csi2_output>;
+		};
+	};
+};
+
+&rkcif_mipi_lvds_sditf {
+	status = "okay";
+
+	port {
+		mipi_lvds_sditf: endpoint {
+			remote-endpoint = <&isp_vir0>;
+		};
+	};
+};
+
+&rkcif_mipi_lvds2_sditf {
+	status = "okay";
+
+	port {
+		mipi_lvds2_sditf: endpoint {
+			remote-endpoint = <&isp_vir1>;
+		};
+	};
+};
+
+&rkcif_mmu {
+	status = "okay";
+};
+
+&rkisp {
+	status = "okay";
+};
+
+&rkisp_mmu {
+	status = "okay";
+};
+
+&rkisp_vir0 {
+	status = "okay";
+
+	port {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		isp_vir0: endpoint@0 {
+			reg = <0>;
+			remote-endpoint = <&mipi_lvds_sditf>;
+		};
+	};
+};
+
+&rkisp_vir0_sditf {
+	status = "okay";
+};
+
+&rkisp_vir1 {
+	status = "okay";
+
+	port {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		isp_vir1: endpoint@0 {
+			reg = <0>;
+			remote-endpoint = <&mipi_lvds2_sditf>;
+		};
+	};
+};
+
+&rkisp_vir1_sditf {
+	status = "okay";
+};
+
+&rkvpss {
+	status = "okay";
+	dvbm = <&rkdvbm>;
+};
+
+&rkvpss_mmu {
+	status = "okay";
+};
+
+&rkvpss_vir0 {
+	status = "okay";
+};
+
+&rkvpss_vir1 {
+	status = "okay";
+};
+
+/* ★自研板 STM32 传感器 SPI(2026-07-06)★
+ * RV1126B 当 SPI 主机,读 STM32(从机)每帧 48 字节传感器帧(21路ADC+seq+CRC16)。
+ * 控制器=SPI0(spi@211e0000),复用组 M2(GPIO5_A3~A6),硬件片选 CSN0:
+ *   L32=SPI0_CLK_M2 (GPIO5_A6)  M32=SPI0_MISO_M2(GPIO5_A5)
+ *   N31=SPI0_MOSI_M2(GPIO5_A4)  P31=SPI0_CSN0_M2(GPIO5_A3,硬件CS)
+ * 用户态经 spidev(/dev/spidev0.0)读,dual_cam_push/spi_sensor.c 负责。
+ * ⚠ 使能后确认 adb/USB 仍正常(GPIO5_A3~A6 别和自研板其它在用外设冲突;
+ *   MYZR 默认这几脚是 LCD_PWREN/TP_INT/TP_RST/USB2_HOST_PWREN,自研板未用故借来做SPI)。 */
+&spi0 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&spi0m2_clk_pins &spi0m2_csn0_pins>;
+
+	spidev@0 {
+		compatible = "rockchip,spidev";
+		reg = <0>;                        /* CS0 = SPI0_CSN0_M2 = P31(硬件片选) */
+		/* 2026-07-06 实测扫频(spi_sensor_test, 500帧/档): 10/20/30/40MHz 全部100%有效(20MHz偶发1帧,
+		 * 30/40MHz 满分);50MHz 直接 0%(收到的是乱码而非全FF, 判定信号完整性到顶, 非"断连")。
+		 * 故定 40MHz, 留有余量(比 50MHz 上限低一档)。若换更长/更差走线需重新扫频验证。 */
+		spi-max-frequency = <40000000>;
+	};
+};

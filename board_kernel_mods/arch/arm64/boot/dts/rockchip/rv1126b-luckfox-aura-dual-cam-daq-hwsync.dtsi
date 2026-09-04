@@ -1,0 +1,31 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * rv1126b-luckfox-aura-dual-cam-daq-hwsync.dtsi
+ * ============================================================================
+ * 自研 DAQ 板(V2) 双 IMX415 + XVS/XHS 硬件主从同步
+ *   cam0(imx415_0, i2c3, CSI0 座) = 主(internal_master): XVS/XHS 输出
+ *   cam1(imx415_1, i2c4, CSI1 座) = 从(slave)          : XVS/XHS Hi-Z 输入
+ *
+ * 板上前提: V2 已把两座 XVS 互连、XHS 互连(1.8V 电平直连, 2026-08-05 确认)。
+ * 驱动前提: imx415.c 已实现 sync_mode(读本文件的属性; 2026-08-05 落地,
+ *           设计与验证计划见 project/app/cam_daq/XVS_HWSYNC_DESIGN.md)。
+ * 开流顺序: 应用必须先起 cam1(从, 待命) 再起 cam0(主, 发脉冲) —— 见 dual_cam。
+ * 回退: 在 rv1126b-luckfox-aura.dts 把 include 换回 dual-cam-daq.dtsi 即
+ *       恢复无同步双摄(驱动 sync_mode=NO_SYNC_MODE, 行为与现状完全一致)。
+ * 注意: 旧 rv1126b-luckfox-aura-dual-cam-hwsync.dtsi 基于开发板原厂模组连线
+ *       (0x37/37.125M/i2c 接法不同), 自研板勿用。
+ * ============================================================================
+ */
+
+/* 复用自研板双摄全部连线(27M 晶振/0x1a/i2c3-i2c4 对调/spi0 自动继承) */
+#include "rv1126b-luckfox-aura-dual-cam-daq.dtsi"
+
+&imx415_0 {
+	/* 主机: XVS/XHS 输出; 单摄减配只留 CSI0 时也能独立出流 */
+	rockchip,camera-module-sync-mode = "internal_master";
+};
+
+&imx415_1 {
+	/* 从机: XVS/XHS 输入, 帧/行时序锁到主机 */
+	rockchip,camera-module-sync-mode = "slave";
+};

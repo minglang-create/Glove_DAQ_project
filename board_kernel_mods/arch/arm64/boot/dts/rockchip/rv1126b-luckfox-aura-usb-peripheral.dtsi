@@ -1,0 +1,39 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * rv1126b-luckfox-aura-usb-peripheral.dtsi
+ * —— 自研板 USB 配置：OTG 口写死 peripheral(从机/device)模式
+ *
+ * 背景(为什么需要这个文件)：
+ *   Luckfox 开发板的 Type-C 口是 "otg" 模式：到底当主机(host)还是从机(device)，
+ *   由板上一颗 HUSB311 Type-C 控制芯片(i2c3, 地址0x4e)检测线缆方向后告诉内核
+ *   (usb-role-switch 机制)。
+ *   我们的自研板【没有焊 HUSB311】→ 内核永远收不到"切成 device"的信号
+ *   → USB gadget(adb、functionfs bulk 图传)全部起不来。
+ *   症状：烧开发板固件后 adb 消失、dual_cam_push 的 USB 推流也无法枚举。
+ *
+ * 解决：本文件把 dwc3 控制器写死为 "peripheral"(纯从机)，不再依赖 Type-C 芯片。
+ *   自研板的 Type-C 只用来当从机向上位机推数据 + adb 调试，写死没有损失。
+ *
+ * 用法(在 rv1126b-luckfox-aura.dts 里)：
+ *   - 自研板固件：  #include 本文件(放在 rv1126b-luckfox-aura.dtsi 之后)
+ *   - Luckfox开发板：注释掉该 include(保留原 otg + HUSB311 自动切换)
+ */
+
+/* dwc3 = RV1126B 的 USB2/3 OTG 控制器(节点定义在 rv1126b.dtsi: usb@21500000)。
+ * 这里只覆盖两处：
+ *   1) dr_mode 由 "otg" 改成 "peripheral" —— 上电即固定当从机，无需角色仲裁；
+ *   2) 删掉 usb-role-switch 属性 —— 告诉驱动"不要等 Type-C 芯片来切角色"。
+ * 注意：原来的 port/endpoint(指向 HUSB311 的接线描述)保留不删——
+ *   peripheral 模式下驱动根本不看它，而删掉会导致 usbc0 里反向引用编译报错。
+ * extcon = <&usb2phy> 也保留：USB PHY 是 SoC 片内的，靠它检测"线插没插"(VBUS)，
+ *   与 Type-C 芯片无关，自研板上照常可用。 */
+&usb_drd_dwc3 {
+	dr_mode = "peripheral";
+	/delete-property/ usb-role-switch;
+};
+
+/* HUSB311 Type-C 控制芯片：自研板没焊这颗料，禁用其节点，
+ * 免得内核开机反复探测 i2c 0x4e 失败刷错误日志。 */
+&usbc0 {
+	status = "disabled";
+};
