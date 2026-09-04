@@ -1,0 +1,92 @@
+# RV1126B 侧 —— 下位机采集系统
+
+双 IMX415 硬同步采集 + STM32 手套链路 + 帧↔周期号自动对齐 + 分段落盘。
+系统全貌见[仓库根 README](../README.md);协议契约见 [docs/PROTOCOL_V2.md](docs/PROTOCOL_V2.md)。
+
+## 快速上手
+
+```bash
+# 1) 本目录需放在 Rockchip SDK 的 app 下两层:
+#    ~/Aura-sdk/project/app/<clone 目录名>/RV1126B/
+#    (Makefile 按"距 app/ 两层"写相对路径, 层级变了要同步改 Makefile 前两行)
+# 2) 恢复内核改动到 SDK 并重编内核(换机器/新 SDK 时必做一次)
+cd board_kernel_mods && sh restore_to_sdk.sh && cd ..
+cd ~/Aura-sdk && sudo ./build.sh kernel     # 之后烧 boot.img
+# 3) 交叉编译本程序(产出 ARM64 可执行 glove_daq_rv)
+make
+# 4) 推到板子并运行
+adb push glove_daq_rv /oem/usr/bin/ && adb shell chmod +x /oem/usr/bin/glove_daq_rv
+adb shell /oem/usr/bin/glove_daq_rv          # 正式流程(按键触发)
+```
+
+常用参数:
+
+| 参数 | 作用 |
+|---|---|
+| `-X -o none` | 纯手套链路调试(不开相机、不落盘) |
+| `-V` | 逐帧校验 STM32 假数据(协议实现验收) |
+| `-w imu` / `joint` / `tactile` / `all` | 终端可视化视图 |
+| `-A` | 台架直通(STM32 AUTOSTART=1 时) |
+| `-o <dir>` | 落盘基目录(默认 `/userdata/daq`) |
+| `-G c:l` / `-K c:l` | PA1 / 按键 GPIO(默认 `0:4` / `0:0`) |
+
+⚠ 每次上电需先有 `/dev/mpi`(rockit 内核模块)。已做成开机自启,见 [AUTOSTART.md](AUTOSTART.md)。
+
+## 目录结构
+
+```
+main.c              总装(参数/信号/exec 重启), 保持薄
+daq_fsm.{c,h}       生命周期状态机: 自检→主从分配→启相机→运行⇄暂停
+glove_link.{c,h}    SPI 事务层: 恒定 2690B 全双工 / 小包 / 数据帧 / CRC-16 ARC / PA1 握手
+cam_pipeline.{c,h}  双 IMX415 采集管线(ISP→VI→VENC H.265→时间戳配对), dual_cam 血统
+align.{c,h}         相机帧 ↔ CYCLE 自动标定(PA1 沿内核时间戳锚定 + 中位数 offset)
+recorder.{c,h}      分段落盘 seg_<n>_<boottime>/{cam0/1.h265, pairs.csv, glove.bin/csv}
+glove_view.{c,h}    终端可视化
+button.{c,h}        按键(GPIO0_A0 低有效, 30ms 去抖, 2s 长按)
+S89insmod_ko.sh     开机自启: 只加载内核模块(部署到板上 /etc/init.d/)
+selfcheck_*.sh      千兆以太网 / SD3.0 板级自检
+docs/               协议契约
+board_kernel_mods/  内核改动快照(镜像 SDK 真实路径)+ sync/restore 脚本
+  arch/arm64/boot/dts/rockchip/   设备树: 主 dts + 6 个 dtsi
+  arch/arm64/configs/             defconfig(含 REALTEK_PHY 等)
+  drivers/media/i2c/imx415.c      相机驱动(主从同步 sync_mode 实现)
+```
+
+## 内核依赖
+
+```bash
+cd board_kernel_mods
+sh sync_from_sdk.sh      # 改完 SDK 内核后, 把最新内容拉进快照, 再 git commit
+sh restore_to_sdk.sh     # 把快照写回 SDK 内核树, 之后重编内核
+```
+
+**设备树组合**(在 `rv1126b-luckfox-aura.dts` 里整块注释切换):
+
+| dtsi | 相机同步拓扑 | 适用 |
+|---|---|---|
+| `...-dual-cam-daq-hwsync.dtsi` | cam0=主 / cam1=从(相机互同步) | V2/V3,已实测 dpts 恒 −6µs |
+| `...-dual-cam-daq-mcusync.dtsi` | 双从(等外部 XVS) | V4 + STM32 供 XVS |
+| `...-aura-v4.dtsi` | 板级:千兆 ETH + SD3.0(UHS) | **仅 V4**,V2/V3 必须注释掉 |
+
+## ⚠ 已知硬约束(2026-09-04 实测坐实)
+
+**IMX415 从机模式【启动】时必须同时收到 XVS 和 XHS 两个信号**(手册 slave 模式明文要求,
+XHS = 1H 周期行同步 ≈138kHz)。只给 XVS、XHS 静态高 → 从机永不出帧(`frame amount:-1`)。
+
+实验证据:两颗都 slave 时 i2c 把 cam0 切 master 同时输出 XVS+XHS → cam1(仍 slave)
+**立即出图且两颗帧数完全相同**;而 STM32 只供 XVS 时从机零帧。
+
+注:早前"XHS 不需要"的结论是误读——那个实验证明的只是"**已锁定后维持**不需要 XHS"。
+
+**对 V4 的影响**:V4 的 XHS 网只在两颗相机间互连、**未引到 STM32**,故 V4 板要么选相机
+主从拓扑(cam0 供 XVS+XHS),要么改板把 XHS 引给 STM32。
+
+## 硬件引脚(V4)
+
+| 信号 | RV1126B | 说明 |
+|---|---|---|
+| SPI0_M2 | J16=CLK / P5=MOSI / T3=MISO / P6=CSN0 | 到 STM32(RV 为主机) |
+| PA1(DATA_READY) | 球 K13 = GPIO0_A4 | STM32→RV,高=有包可读 |
+| 按键 SW3 | 球 A2 = GPIO0_A0 | 低有效 |
+| XVS | 相机 XVS 网 ↔ STM32 PB10(经 TXS0101 电平转换) | 60Hz 时基 |
+| XHS | 仅两相机互连(未接 STM32) | 见上方硬约束 |
