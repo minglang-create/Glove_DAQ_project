@@ -226,10 +226,11 @@ int fsm_run(const fsm_cfg_t *cfg)
 			if (now_ms() - t_stat > 1000 && !gv_active()) {
 				t_stat = now_ms();
 				const glove_stats_t *s = glove_stats();
-				double off_ms, std_us; uint32_t n;
-				int locked = align_status(&off_ms, &std_us, &n);
+				double off_ms, std_us, drift; uint32_t n, slips;
+				int locked = align_status(&off_ms, &std_us, &n, &drift, &slips);
 				printf("[手套] %.1fHz 有效%llu/%llu cycle=%u 丢%llu crc错%llu "
-				       "空帧%llu magic错%llu 小包%llu | [对齐] %s offset=%.2fms σ=%.0fµs n=%u\n",
+				       "空帧%llu magic错%llu 小包%llu | [对齐] %s offset=%.2fms σ=%.0fµs "
+				       "n=%u 漂移%+.1fµs/s%s\n",
 				       s->rate_hz, (unsigned long long)s->ok,
 				       (unsigned long long)s->reads, s->last_cycle,
 				       (unsigned long long)s->cycle_dropped,
@@ -237,7 +238,8 @@ int fsm_run(const fsm_cfg_t *cfg)
 				       (unsigned long long)s->all_zero,
 				       (unsigned long long)s->magic_err,
 				       (unsigned long long)s->small_pkts,
-				       locked ? "已标定" : "标定中", off_ms, std_us, n);
+				       locked ? "已标定" : "标定中", off_ms, std_us, n, drift,
+				       slips ? " ★有滑移★" : "");
 			}
 			break;
 		}

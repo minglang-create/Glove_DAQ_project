@@ -17,6 +17,12 @@ void align_reset(void);
 void align_on_glove(uint32_t cycle, uint64_t edge_ns);
 /* 相机 sink 每帧对调用: 返回 0=已标定(cycle/residual 有效), -1=标定未完成 */
 int  align_lookup(uint64_t pts_us, uint32_t *cycle, int64_t *residual_us);
-/* 状态: 0=采样中 1=已锁定; 输出统计(打印用) */
-int  align_status(double *offset_ms, double *resid_std_us, uint32_t *n_samples);
+/* 状态: 0=采样中 1=已锁定; 输出统计(打印用, 任意出参可为 NULL)
+ *   offset_ms      当前偏移(ms)
+ *   resid_std_us   窗内残差 σ(µs) = 当前对齐抖动; 半周期/σ 即判决裕量
+ *   n_samples      累计已指派帧数
+ *   drift_us_per_s 跟踪到的漂移率(µs/s): 同源≈0, 异源=两晶振 ppm 差
+ *   slips          滑移计数: >0 表示曾发生错拍指派(漂移越过半周期), 应排查 */
+int  align_status(double *offset_ms, double *resid_std_us, uint32_t *n_samples,
+                  double *drift_us_per_s, uint32_t *slips);
 #endif
