@@ -1,0 +1,2806 @@
+                                                                                                                                                                         TMP1075
+                                                                                                                           ZHCSHX1E – MARCH 2018 – REVISED AUGUST 2021
+
+具有 I2C 和 SMBus 接口且采用行业标准 LM75 外形尺寸和引脚输出的 TMP1075
+                     温度传感器
+
+1 特性                                                                             3 说明
+• 温度精度：                                                                          TMP1075 精度最高，功耗最低，是行业标准 LM75 和
+  – -55°C 至 +125°C 范围内为 ±0.25°C（典型值）                                             TMP75 数字温度传感器的替代产品。TMP1075 采用
+  – -40 °C 至 +110°C 范围内为 ±1°C（最大值）                                               SOIC-8、VSSOP-8、WSON-8 和 SOT563-6 封装，
+  – -55°C 至 +125°C 范围内为 ±2°C（最大值）                                                可提供引脚对引脚及软件兼容，以便快速升级任何现有
+• 低功耗：                                                                           xx75 设计。TMP1075 新增的封装为 2.0 × 2.0mm
+  – 2.7μA 平均电流                                                                   DFN 和 1.6 × 1.6mm SOT563-6，与 SOIC 封装相
+  – 0.37μA 关断电流                                                                  比，印刷电路板 (PCB) 封装面积分别减少了 82% 和
+• 电源电压范围选项：1.62V 至 5.5V                                                          89%。
+• 温度与电源无关                                                                        TMP1075 可在较宽的工作温度范围内实现 ±1°C 的精
+• 数字接口：SMBus、I2C                                                                 度，它还具有一个可提供 0.0625°C 温度分辨率的片上
+• 软件与业界通用 LM75 和 TMP75 兼容                                                        12 位模数转换器 (ADC)。
+• 可兼容 I3C 混合快速模式总线
+• 分辨率：12 位                                                                       TMP1075 兼容两线制 SMBus 接口和 I2C 接口，支持
+• 支持高达 32 个 I2C 地址                                                               高达 32 个器件地址并提供 SMBus 复位和警报功能。
+• 警报引脚功能                                                                                                                              器件信息(1)
+• NIST 可追溯性                                                                                                 器件型号                        封装                  封装尺寸（标称值）
+2 应用                                                                                                                          VSSOP/DGK (8)             3.00mm × 3.00mm
+                                                                                                                              SOIC/D (8)                4.90mm × 3.91mm
+•   电源温度监控                                                                       TMP1075
+•   计算机外设过热保护                                                                                                                 WSON/DSG (8)              2.00mm × 2.00mm
+•   笔记本电脑                                                                                                                     SOT563/DRL (6)(2)         1.20mm × 1.60mm
+•   手机
+                                                                                 (1)                         如需了解所有可用封装，请参阅数据表末尾的可订购产品附
+•   电池管理                                                                                                     录。
+•   办公机器                                                                         (2)                         可作为 TMP1075N 订购。
+•   恒温器控制
+•   环境监测和 HVAC
+•   机电器件温度
+                                                          Supply Voltage                                     3
+                                                     1.7 V to 5.5 V (TMP1075)                                              Average        Average r3V        Min/Max Limit
+                                                    1.62 V to 3.6 V (TMP1075N)                              2.5
+                                                                                                             2
+                                                                                                            1.5
+                                                                                  Temperature Error (qC)
+
+
+
+
+                  Pullup Resistors
+                       5 k                              Supply Bypass
+                                                                                                             1
+                                                           Capacitor
+                                                            0.01 µF                                         0.5
+                                                                                                             0
+                     SDA                       V+                                                          -0.5
+                                               A0                                                            -1
+  Two-Wire           SCL
+Host Controller                                                                                            -1.5
+                                              A1*                                                            -2
+                     ALERT                                                                                 -2.5
+                                              A2*                                                            -3
+                    GND                                                                                        -55   -35    -15   5      25    45      65    85    105    125
+                                                                                                                                      Temperature (qC)                       D00X
+                        *Pin is not available on
+                              TMP1075N                                                                     DGK 和 D 封装
+                   简化版原理图                                                                                                             温度精度
+
+
+
+
+       本文档旨在为方便起见，提供有关 TI 产品中文版本的信息，以确认产品的概要。有关适用的官方英文版本的最新信息，请访问
+       www.ti.com，其内容始终优先。TI 不保证翻译的准确性和有效性。在实际设计之前，请务必参考最新版本的英文版本。
+                                                            English Data Sheet: SBOS854
+TMP1075
+ZHCSHX1E – MARCH 2018 – REVISED AUGUST 2021                                                                                                                    www.ti.com.cn
+
+
+                                                                         Table of Contents
+1 特性................................................................................... 1     9.2 Functional Block Diagram......................................... 13
+2 应用................................................................................... 1     9.3 Feature Description...................................................14
+3 说明................................................................................... 1     9.4 Device Functional Modes..........................................20
+4 Revision History.............................................................. 2            9.5 Register Map.............................................................22
+5 说明（续）.........................................................................4           10 Application and Implementation................................ 26
+6 Device Comparison......................................................... 4                10.1 Application Information........................................... 26
+7 Pin Configuration and Functions...................................5                         10.2 Typical Application.................................................. 26
+8 Specifications.................................................................. 6        11 Power Supply Recommendations..............................27
+  8.1 Absolute Maximum Ratings ....................................... 6                    12 Layout...........................................................................28
+  8.2 ESD Ratings .............................................................. 6            12.1 Layout Guidelines................................................... 28
+  8.3 Recommended Operating Conditions ........................6                              12.2 Layout Example...................................................... 28
+  8.4 Thermal Information ...................................................7              13 Device and Documentation Support..........................31
+  8.5 Electrical Characteristics:TMP1075 ........................... 7                        13.1 接收文档更新通知................................................... 31
+  8.6 Electrical Characteristics: TMP1075N ....................... 8                          13.2 支持资源..................................................................31
+  8.7 Timing Requirements:TMP1075 ................................ 9                          13.3 Trademarks............................................................. 31
+  8.8 Timing Requirements: TMP1075N ...........................10                             13.4 Electrostatic Discharge Caution..............................31
+  8.9 Switching Characteristics .........................................10                   13.5 术语表..................................................................... 31
+  8.10 Typical Characteristics............................................ 11               14 Mechanical, Packaging, and Orderable
+9 Detailed Description......................................................13                Information.................................................................... 31
+  9.1 Overview................................................................... 13
+
+
+
+4 Revision History
+注：以前版本的页码可能与当前版本的页码不同
+Changes from Revision D (October 2019) to Revision E (August 2021)                                                                                                       Page
+•    向列表中添加了 TMP1075N 特性....................................................................................................................... 1
+•    向特性列表添加了典型精度规格......................................................................................................................... 1
+•    添加了 SOT563（TMP1075N 可订购）封装...................................................................................................... 1
+•    在“说明（续）”部分中添加了 TMP1075N 温度范围.......................................................................................4
+•    Added Device Comparison Section.................................................................................................................... 4
+•    Added figures for different package options....................................................................................................... 5
+•    Added column for TMP1075N pin numbers........................................................................................................5
+•    Added TMP1075N Specifications....................................................................................................................... 6
+•    Added TMP1075NDRL Temperature Error vs. Temperature graph ................................................................. 11
+•    Added TMP1075N information in Overview Section.........................................................................................13
+•    Changed the Functional Block Diagram to apply to TMP1075N...................................................................... 13
+•    Added number of I2C addresses available on TMP1075N to Serial Bus Address Section. ............................ 15
+•    Added table for TMP1075N address options. ..................................................................................................15
+•    Updated internal register structure figure to apply to TMP1075N.....................................................................15
+•    Added typical specification for TMP1075N timeout ......................................................................................... 17
+•    Added clarification on timeout function to include SCL.....................................................................................17
+•    Removed redundant information to accurate describe all packages................................................................ 20
+•    Added TMP1075N OS bit behavior.................................................................................................................. 20
+•    Added TMP1075N Continuous Conversion Mode information......................................................................... 20
+•    Updated Conversion Rate Diagram to reflect all TMP1075 and TMP1075N....................................................20
+•    Clarified what TM bit behavior for TMP1075 and TMP1075N ......................................................................... 21
+•    Added table note to indicate Device ID register is not available on TMP1075N...............................................22
+•    Added TMP1075N configuration register information ......................................................................................23
+•    Updated text to indicate that device ID register does not apply to TMP1075N................................................ 25
+•    Added number of I2C addresses available on TMP1075N...............................................................................26
+•    Changed Typical Connections figure to apply to TMP1075N........................................................................... 26
+
+2       Submit Document Feedback                                                                                             Copyright © 2021 Texas Instruments Incorporated
+
+                                                                       Product Folder Links: TMP1075
+                                                                                                                                                                    TMP1075
+www.ti.com.cn                                                                                                    ZHCSHX1E – MARCH 2018 – REVISED AUGUST 2021
+
+•    Removed redundant Application Curve section................................................................................................26
+•    Updated text to include TMP1075N information............................................................................................... 26
+•    Updated Migrating From the xx75 Device Family section to specify TMP1075 compatible packages ............26
+•    Included TMP1075N information to Power Supply Recommendations............................................................ 27
+•    Added figures to the Layout Example section for each package......................................................................28
+
+Changes from Revision C (January 2019) to Revision D (October 2019)                                                                                                     Page
+•    向特性列表中添加了软件兼容性......................................................................................................................... 1
+•    Updated absolute max for Power supply V+ to 6.5V from 6V.............................................................................6
+•    Updated absolute max for Input voltage on SCL, SDA, A1, A0 to 6.5V from 6V................................................6
+•    Updated pointer register to be part of the serial interface description.............................................................. 15
+•    Updated the register map table to new format..................................................................................................22
+•    Added access type codes for register bits........................................................................................................ 22
+•    Updated temperature register format and bit definition table............................................................................22
+•    Updated configuration register format and bit definition table ......................................................................... 23
+•    Updated low limit register format and bit definition table ................................................................................. 24
+•    Updated high limit register format and bit definition table ................................................................................24
+•    Updated device ID register format and bit definition table ............................................................................... 25
+
+Changes from Revision B (December 2018) to Revision C (January 2019)                                                                                                    Page
+•    将 TMP1075DSG 封装从“预发布”更改为“量产数据”..................................................................................1
+•    将温度精度 (DGK & D) 图表的最小/最大数值由 1.5°C 更改为 1°C.....................................................................1
+•    Changed min/max limit from 1.5°C to 1°C in the DGK & D Temperature Error vs. Temperature graph........... 11
+•    Added DSG Temperature Error vs. Temperature graph ...................................................................................11
+
+Changes from Revision A (June 2018) to Revision B (December 2018)                                                                                                       Page
+•    增加了 TMP1075DSG 封装................................................................................................................................ 1
+•    更新了数据表的说明部分并添加了说明（续）部分.............................................................................................1
+•    Added TMP1075 configuration register support for single byte read and write................................................ 23
+•    Added Software support section for migrating from xx75 to TMP1075 ........................................................... 26
+
+Changes from Revision * (March 2018) to Revision A (June 2018)                                                                                                          Page
+•    将 TMP1075DGK 可订购状态从“预告信息”更改为“量产数据”................................................................... 1
+•    添加了 SOIC 和 DFN 封装.................................................................................................................................. 1
+•    Changed the Functional Block Diagram .......................................................................................................... 13
+•    Changed Digital Temperature Output crossreference from: Temperature Register (0x00) to: Temperature
+     Data Format .....................................................................................................................................................14
+•    Changed the Temperature Data Format table ................................................................................................. 14
+•    Changed and renamed the Address Pins and Slave Addresses for the TMP1075 table to Address Pins State
+     ..........................................................................................................................................................................15
+•    Changed the Two-Wire Timing Diagrams section ............................................................................................18
+•    Added content to the Device Functional Modes section ..................................................................................20
+
+
+
+
+Copyright © 2021 Texas Instruments Incorporated                                                                                        Submit Document Feedback                     3
+                                                                    Product Folder Links: TMP1075
+TMP1075
+ZHCSHX1E – MARCH 2018 – REVISED AUGUST 2021                                                                             www.ti.com.cn
+
+
+5 说明（续）
+TMP1075 设计用于提供精确且具有成本效益的温度测量，可适用于几乎所有电信、企业、工业和个人电子设备。
+TMP1075 D、DGK 和 DSG 封装的额定工作温度范围为 -55°C 至 +125°C，TMP1075N DRL 封装的额定工作温
+度范围为 -40°C 至 +125°C。
+TMP1075 装置在生产调试阶段经过 100% 测试，可通过 NIST 进行追溯，且使用经 ISO/IEC 17025 认证标准校准
+的设备进行了验证。
+
+6 Device Comparison
+表 6-1 lists the key specification and feature differences between the different TMP1075 packages.
+                                 表 6-1. Package Feature and Spec Comparison
+                                                            TMP1075                                               TMP1075N
+     SPEC/FEATURE
+                                       D                      DGK                       DSG                           DRL
+
+     Supply Voltage              1.7 V to 5.5 V           1.7 V to 5.5 V            1.7 V to 5.5 V               1.62 V to 3.6V
+
+    Temperature Range       –55°C to +125°C             –55°C to +125°C           –55°C to +125°C              –40°C to +125°C
+
+        Body Size          4.90 mm × 3.91 mm           3.00 mm × 3.00 mm          2.00 mm × 2.00 mm           1.60 mm × 1.20 mm
+
+        Accuracy         ±1.0°C: –40°C to +110°C ±1.0°C: –40°C to +110°C      ±1.0°C : –40°C to +75°C      ±1.0°C: –10°C to +60°C
+                         ±2.0°C: –55°C to +125°C ±2.0°C: –55°C to +125°C ±2.0°C: –55°C to +125°C ±2.0°C: –40°C to +125°C
+
+      I2C Addresses                   32                       32                        32                             4
+
+     Conversion Rate                  Yes                      Yes                       Yes                           No
+        Settings
+
+        Device ID                     Yes                      Yes                       Yes                           No
+
+
+
+
+4     Submit Document Feedback                                                              Copyright © 2021 Texas Instruments Incorporated
+
+                                                  Product Folder Links: TMP1075
+                                                                                                                                        TMP1075
+www.ti.com.cn                                                                                ZHCSHX1E – MARCH 2018 – REVISED AUGUST 2021
+
+
+7 Pin Configuration and Functions
+
+           SDA      1                                     8     V+
+                                                                                  SDA           1                              8        V+
+
+
+                                                                                  SCL           2                              7         A0
+            SCL     2                                     7     A0
+
+                                                                                ALERT           3                              6         A1
+
+         ALERT      3                                     6     A1                                                                       A2
+                                                                                 GND            4                              5
+
+
+           GND      4                                     5     A2
+                                                                         .
+
+          图 7-1. D Package 8-Pin SOIC Top View                                图 7-2. DGK Package 8-Pin VSSOP Top View
+
+                  SDA    1                            8   V+
+                                                                                          SCL       1                 6       SDA
+
+
+                  SCL    2                            7   A0
+                                                                                          GND       2                 5       V+
+
+              ALERT      3                            6   A1
+                                                                                        ALERT       3                 4       A0
+
+                  GND    4                            5   A2
+                                                                         1. Pin 1 is determined by orienting the package
+ .                                                                          marking as indicated in the diagram.
+                                                                         2. Referred to as the TMP1075N orderable
+ .                                                                          throughout the document.
+       图 7-3. DSG Package 8-Pin WSON Top View                                 图 7-4. DRL Package 6-Pin SOT563 Top View
+
+                                                              表 7-1. Pin Functions
+                             PIN
+                           SOIC /                               I/O                                 DESCRIPTION
+ NAME                     VSSOP /            SOT563
+                           WSON
+ A0                           7                   4              I     Address select A0: Connect to GND, V+, SDA, or SCL
+ A1                           6                   —              I     Address select A1: Connect to GND, V+, SDA, or SCL
+ A2                           5                   —              I     Address select A2: Connect to GND or V+
+                                                                       Overtemperature alert; Open-drain output that requires a pullup
+ ALERT                        3                   3              O
+                                                                       resistor
+ GND                          4                   2             —      Ground
+ SCL                          2                   1              I     Serial clock
+ SDA                          1                   6             I/O    Serial data. Open-drain output that requires a pullup resistor
+                                                                       Supply voltage, 1.7 V to 5.5 V (TMP1075); 1.62 V to 3.6 V
+ V+                           8                   5              I
+                                                                       (TMP1075N)
+
+
+
+
+Copyright © 2021 Texas Instruments Incorporated                                                                Submit Document Feedback           5
+                                                          Product Folder Links: TMP1075
+TMP1075
+ZHCSHX1E – MARCH 2018 – REVISED AUGUST 2021                                                                                               www.ti.com.cn
+
+
+8 Specifications
+8.1 Absolute Maximum Ratings
+over operating free-air temperature range (unless otherwise noted)(1)
+                                                                                                                 MIN              MAX         UNIT
+                                                                                        TMP1075                                    6.5         V
+    Power supply, V+
+                                                                                        TMP1075N                                     4
+    Input voltage SCL, SDA, A1, A0                                                      TMP1075                 –0.3               6.5         V
+    Input voltage SCL, SDA, A0                                                          TMP1075N                –0.3                 4         V
+                                                                                                                        (V+)+0.3 and
+    Input voltage ALERT                                                                 TMP1075N                                               V
+                                                                                                                                 ≤4
+    Input voltage A2 pin                                                                TMP1075                 –0.3         (V+) + 0.3        V
+    Operating temperature                                                                                        –55               150         °C
+    Junction temperature, TJ                                                                                                       150         °C
+    Storage temperature, Tstg                                                                                    –60               130         °C
+
+(1)          Stresses beyond those listed under Absolute Maximum Ratings may cause permanent damage to the device. These are stress ratings
+             only, which do not imply functional operation of the device at these or any other conditions beyond those indicated under
+             Recommended Operating Conditions. Exposure to absolute-maximum-rated conditions for extended periods may affect device
+             reliability.
+
+
+8.2 ESD Ratings
+                                                                                                                                   VALUE       UNIT
+                                                Human body model (HBM), per ANSI/ESDA/JEDEC JS-001(1)                               2000
+    V(ESD)        Electrostatic discharge                                                                                                           V
+                                                Charged device model (CDM), per JEDEC specification JESD22-C101(2)                  1000
+
+(1)          JEDEC document JEP155 states that 500-V HBM allows safe manufacturing with a standard ESD control process.
+(2)          JEDEC document JEP157 states that 250-V CDM allows safe manufacturing with a standard ESD control process.
+
+
+8.3 Recommended Operating Conditions
+over operating free-air temperature range (unless otherwise noted)
+                                                                                                      MIN            NOM             MAX       UNIT
+                                            TMP1075                                                    1.7                            5.5          V
+    Supply voltage
+                                            TMP1075N                                                  1.62             3.3            3.6          V
+                                            TMP1075                                                   –55                             125       °C
+    Operating free-air temperature, TA
+                                            TMP1075N                                                   -40                            125       °C
+
+
+
+
+6            Submit Document Feedback                                                                    Copyright © 2021 Texas Instruments Incorporated
+
+                                                          Product Folder Links: TMP1075
+                                                                                                                                        TMP1075
+www.ti.com.cn                                                                               ZHCSHX1E – MARCH 2018 – REVISED AUGUST 2021
+
+
+8.4 Thermal Information
+                                                          TMP1075             TMP1075             TMP1075               TMP1075N
+               THERMAL METRIC(1)                       DGK (VSSOP)            D (SOIC)          DSG (WSON)              DRL (SOT)           UNIT
+                                                           8 PINS              8 PINS                 8 PINS             6 PINS
+ RθJA       Junction-to-ambient thermal resistance          202.5               130.4                  87.4               210.3             °C/W
+ Rθ         Junction-to-case (top) thermal
+                                                              82                76.9                  111.1               105.0             °C/W
+ JC(top)    resistance
+ RθJB       Junction-to-board thermal resistance            124.4               72.3                   54                  87.5             °C/W
+            Junction-to-top characterization
+ ΨJT                                                         17.9                32                    9.8                 6.1              °C/W
+            parameter
+            Junction-to-board characterization
+ ΨJB                                                        122.6               71.9                   54.4                87.0             °C/W
+            parameter
+ Rθ         Junction-to-case (bottom) thermal
+                                                              __                 __                    28.1                __               °C/W
+ JC(bot)    resistance
+ MT         Thermal mass                                     16.6               64.2                   5.0                 __               mJ/°C
+
+(1)     For more information about traditional and new thermal metrics, see the Semiconductor and IC Package Thermal Metrics application
+        report.
+
+
+8.5 Electrical Characteristics:TMP1075
+at TA = –55°C to +125°C and V+ = 1.7 V to 5.5 V (unless noted); typical specification are at TA = 25°C and V+=3.3 V
+                  PARAMETER                                         TEST CONDITIONS                             MIN      TYP        MAX     UNIT
+ TEMPERATURE INPUT
+                   Range                                                                                       –55                   125     °C
+                                                   –40°C to +110°C                                                      ±0.25         ±1
+                                      DGK, D                                                                                                 °C
+                   Accuracy                        –55°C to +125°C                                                      ±0.25         ±2
+                   (temperature
+                   error)                          –40°C to +75°C                                                       ±0.25         ±1     °C
+                                      DSG
+                                                   –55°C to +125°C                                                      ±0.25         ±2     °C
+                   Accuracy (temperature error)
+                                                PSRR                                                                               ±0.03     °C/V
+                   vs. supply
+                   Resolution                      1 LSB (12 bit)                                                      0.0625                °C
+                   Repeatability(1)                25°C, V+= 3.3 V(2)                                                  0.0625                °C
+                   Long-term drift(3)              500 hours at 150°C, 5.5V                                            0.0625                °C
+ DIGITAL INPUT/OUTPUT
+                   Input capacitance                                                                                       5                 pF
+ VIH               High-level input logic                                                                    0.7(V+)                          V
+ VIL               Low-level input logic                                                                                          0.3(V+)     V
+ IIN               Leakage input current                                                                      –0.25        0        0.25     µA
+                   Input voltage hysteresis        SCL and SDA pins                                                      600                 mV
+ VOL               Low-level output logic          IOL = -3 mA, SDA and ALERT pins                                0      0.15         0.4     V
+                   ADC Conversion time             one-shot mode                                                 4.5      5.5          7     ms
+                                                   R1 = 0, R0 = 0 (default)                                              27.5
+                                                   R1 = 0, R0 = 1                                                         55
+ TC                Conversion Time                                                                                                           ms
+                                                   R1 = 1, R0 = 0                                                        110
+                                                   R1 = 1, R0 = 1                                                        220
+                   Reset time                      The time between reset till ADC conversion start                       0.3                ms
+                   Conversion Rate Variation                                                                   –10         0          10      %
+ POWER SUPPLY
+                   Operating voltage range                                                                       1.7      3.3         5.5     V
+
+
+Copyright © 2021 Texas Instruments Incorporated                                                                  Submit Document Feedback           7
+                                                         Product Folder Links: TMP1075
+TMP1075
+ZHCSHX1E – MARCH 2018 – REVISED AUGUST 2021                                                                                           www.ti.com.cn
+
+at TA = –55°C to +125°C and V+ = 1.7 V to 5.5 V (unless noted); typical specification are at TA = 25°C and V+=3.3 V
+                     PARAMETER                                       TEST CONDITIONS                          MIN        TYP          MAX     UNIT
+                                                     R1 = 0, R0 = 0 (default)                                              10            20    µA
+                                                    R1 = 0, R0 = 1                                                         5.5            9
+                      Quiescent current (serial bus
+    IQ                                              R1 = 1, R0 = 0                                                             4          6    µA
+                      inactive)
+                                                    R1 = 1, R0 = 1                                                         2.7            4
+                                                     During 5.5 ms active conversion                                       52            85    µA
+                                                     Serial bus active, SCL frequency = 400 kHz,
+                                                                                                                           13                  µA
+                                                     A0=A1=A2=GND
+    ISD               Shutdown current               Serial bus inactive, A0=A1=A2=SCL=SDA=V+,
+                                                                                                                         0.37          0.65    µA
+                                                     25°C
+                                                     Serial bus inactive, A0=A1=A2=SCL=SDA=V+                            0.37           3.5    µA
+                                                     Supply rising, Power-on Reset                                       1.22
+                      Power supply thresholds                                                                                                  V
+                                                     Supply failing, Brown-out Detect                                      1.1
+
+(1)        Repeatability is the ability to reproduce a reading when the measured temperature is applied consecutively, under the same conditions.
+(2)        One-shot mode setup, 1 sample per minute for 24 hours.
+(3)        Long-term drift is determined using accelerated operational life testing at a junction temperature of 150°C.
+
+
+8.6 Electrical Characteristics: TMP1075N
+At TA = 25°C and V+ = 1.62 to 3.6 V (unless otherwise noted)
+                 PARAMETER                                        TEST CONDITIONS                            MIN        TYP           MAX     UNIT
+    TEMPERATURE SENSOR
+              Temperature Operating
+                                                                                                              -40                      125    °C
+              Range
+                                            -10°C to 60°C                                                               0.25            ±1
+    TERR      Temperature accuracy                                                                                                             °C
+                                            -40°C to 125°C                                                               0.5            ±2
+    PSR       DC power supply rejection                                                                                  0.2           0.5    °C/V
+                                            Including sign bit                                                            12                  Bits
+    TRES      Temperature resolution
+                                            LSB                                                                         62.5                  m°C
+    tCONV     Conversion time                                                                                             26            35    ms
+    DIGITAL INPUT/OUTPUT
+    CIN       Input capacitance                                                                                            3                  pF
+    VIH       Input logic high level                                                                     0.7 x V+                      3.6     V
+    VIL       Input logic low level                                                                                                0.3 x V+    V
+    IIN       Input leakage current         0 V< V+ < 3.6 V                                                                              1    μA
+    VOL       Output low level              SDA, ALERT (V+ > 2 V, IOL = 3 mA)                                   0                      0.4     V
+    VOL       Output low level              SDA, ALERT (V+ < 2 V, IOL = 3 mA)                                   0                  0.2 x V+    V
+    POWER SUPPLY
+    V+        Operating supply range                                                                         1.62                      3.6     V
+                                            Serial bus inactive                                                            7            10
+              Average current
+    IDD_AVG                                 Serial bus active, SCL frequency = 400 kHz                                    15                  μA
+              consumption
+                                            Serial bus active, SCL frequency = 2.85 MHz                                   85
+                                            Serial bus inactive                                                          0.5             1    μA
+    IDD_SD    Shutdown current              Serial bus active, SCL frequency = 400 kHz                                    10                  μA
+                                            Serial bus active, SCL frequency = 2.85 MHz                                   80                  μA
+
+
+
+
+8           Submit Document Feedback                                                                    Copyright © 2021 Texas Instruments Incorporated
+
+                                                             Product Folder Links: TMP1075
+                                                                                                                                        TMP1075
+www.ti.com.cn                                                                                     ZHCSHX1E – MARCH 2018 – REVISED AUGUST 2021
+
+
+8.7 Timing Requirements:TMP1075
+minimum and maximum specifications are over –55°C to 125°C and V+ = 1.7 V to 5.5 V (unless otherwise noted)(1)
+                                                                                                   FAST MODE         HIGH-SPEED MODE
+                                                                                                                                         UNIT
+                                                                                                     MIN     MAX         MIN     MAX
+ f(SCL)        SCL operating frequency                                                              0.001      0.4      0.001    2.56    MHz
+ t(BUF)        Bus-free time between STOP and START conditions                                      1300                 160              ns
+               Hold time after repeated START condition.
+ t(HDSTA)                                                                                            600                 160              ns
+               After this period, the first clock is generated.
+ t(SUSTA)      Repeated START condition setup time                                                   600                 160              ns
+ t(SUSTO)      STOP condition setup time                                                             600                 160              ns
+ t(HDDAT)      Data hold time(2)                                                                       0                   0     130      ns
+ t(SUDAT)      Data setup time                                                                       100                  20              ns
+ t(LOW)        SCL clock low period                                                                 1300                 250              ns
+ t(HIGH)       SCL clock high period                                                                 600                  60              ns
+ t(VDAT)       Data valid time (data response time)(3)                                                         900               130      ns
+ tFDA          Data fall time                                                                                  300               100      ns
+ tR            Clock rise time                                                                                 300                40      ns
+ tF            Clock fall time                                                                                 300                40      ns
+ ttimeout      Timeout (SCL = SDA = GND)                                                              20        30        20      30      ms
+ tRC           Clock/ data rise time for SCL = 100 kHz                                                       1000                         ns
+
+(1)        The host and device have the same V+ value. Values are based on statistical analysis of samples tested during initial release.
+(2)        The maximum t(HDDAT) can be 0.9 µs for fast mode, and is less than the maximum t(VDAT) by a transition time.
+(3)        t(VDAT) = time for data signal from SCL LOW to SDA output (HIGH to LOW, depending on which is worse). = time for data signal from
+           SCL LOW to SDA output (HIGH to LOW, depending on which is worse).
+
+
+
+
+Copyright © 2021 Texas Instruments Incorporated                                                                  Submit Document Feedback         9
+                                                                  Product Folder Links: TMP1075
+TMP1075
+ZHCSHX1E – MARCH 2018 – REVISED AUGUST 2021                                                                                              www.ti.com.cn
+
+8.8 Timing Requirements: TMP1075N
+minimum and maximum specifications are over –40°C to 125°C and V+ = 1.62 V to 3.6 V (unless otherwise noted)(1)
+                                                                                                    FAST MODE            HIGH-SPEED MODE
+                                                                                                                                                UNIT
+                                                                                                     MIN          MAX           MIN     MAX
+ f(SCL)        SCL operating frequency                                                              0.001          0.4      0.001       2.85     MHz
+ t(BUF)        Bus-free time between STOP and START conditions                                        600                       160               ns
+               Hold time after repeated START condition.
+ t(HDSTA)                                                                                             600                       160               ns
+               After this period, the first clock is generated.
+ t(SUSTA)      Repeated START condition setup time                                                    600                       160               ns
+ t(SUSTO)      STOP condition setup time                                                              600                       160               ns
+ t(HDDAT)      Data hold time(2)                                                                      100         900            25      105      ns
+ t(SUDAT)      Data setup time                                                                        100                        25               ns
+ t(LOW)        SCL clock low period                                                                  1300                       210               ns
+ t(HIGH)       SCL clock high period                                                                  600                        60               ns
+ tFD           Data fall time                                                                                     300                     80      ns
+                                                                                                                  300
+ tRD           Data rise time
+                                                                          SCLK ≤100 kHz                           1000
+ tRC           Clock rise time                                                                                    300                     40      ns
+ tFC           Clock fall time                                                                                    300                     40      ns
+ ttimeout      Timeout (SCL = SDA = GND)                                                               30          40            30       40      ms
+
+(1)        The host and device have the same V+ value. Values are based on statistical analysis of samples tested during initial release.
+(2)        The maximum t(HDDAT) can be 0.9 µs for fast mode, and is less than the maximum t(VDAT) by a transition time.
+
+
+8.9 Switching Characteristics
+over operating free-air temperature range (unless otherwise noted)
+                                                                                                            MIN          TYP          MAX      UNIT
+ tLPF              Spike filter for I3C compatibility             SCL= 12.5 MHz                                            50                    ns
+
+
+
+
+10          Submit Document Feedback                                                                         Copyright © 2021 Texas Instruments Incorporated
+
+                                                                    Product Folder Links: TMP1075
+                                                                                                                                                                                                      TMP1075
+www.ti.com.cn                                                                                                                                  ZHCSHX1E – MARCH 2018 – REVISED AUGUST 2021
+
+
+8.10 Typical Characteristics
+at TA = 25°C, V+ = 3.3 V, and apply to D, DGK, and DSG packages (unless otherwise noted)
+
+                               3                                                                                                3
+                              2.5            Average        Average r3V       Min/Max Limit                                    2.5             Average              Average r3V         Min/Max Limit
+
+                               2                                                                                                2
+                              1.5                                                                                              1.5
+    Temperature Error (qC)
+
+
+
+
+                                                                                                     Temperature Error (qC)
+                               1                                                                                                1
+                              0.5                                                                                              0.5
+                               0                                                                                                0
+                             -0.5                                                                                             -0.5
+                               -1                                                                                               -1
+                             -1.5                                                                                             -1.5
+                               -2                                                                                               -2
+                             -2.5                                                                                             -2.5
+                               -3                                                                                               -3
+                                 -55   -35   -15    5      25    45      65   85    105   125                                     -55    -35    -15         5      25    45      65     85     105     125
+                                                        Temperature (qC)                      D00X
+                                                                                                                                                                Temperature (qC)                          D00X
+
+                                   图 8-1. DGK & D Temperature Error vs.                              图 8-2. DSG Temperature Error vs. Temperature
+                                              Temperature
+                                                                                                                              1.5
+                                                                                                                                          V+ = 5.5 V
+                                                                                                                                          V+ = 3.3 V
+                                                                                                                                          V+ = 1.7 V
+                                                                                                     Supply Current (PA)
+
+
+
+
+                                                                                                                                1
+
+
+
+
+                                                                                                                              0.5
+
+
+
+
+                                                                                                                                0
+                                                                                                                                -55      -35   -15      5          25    45      65     85     105     125
+                                                                                                                                                                Temperature (qC)                          D002
+
+
+                             图 8-3. TMP1075NDRL Temperature Error vs.                                                         图 8-4. Shutdown Current vs. Temperature
+                                           Temperature
+                              14                                                                                              650
+                                        27.5 mSec                                                                             600                                                            V+ = 5.5 V
+                              12        55 mSec                                                                                                                                              V+ = 4.5 V
+                                                                                                                              550                                                            V+ = 3.3 V
+                                        110 mSec
+                                        220 mSec                                                                              500                                                            V+ = 2.5 V
+                              10
+                                                                                                     Supply Current (PA)
+       Supply Current (PA)
+
+
+
+
+                                                                                                                              450                                                            V+ = 1.7 V
+                                                                                                                                                                                             Limit
+                                                                                                                              400
+                              8
+                                                                                                                              350
+                                                                                                                              300
+                              6
+                                                                                                                              250
+                                                                                                                              200
+                              4
+                                                                                                                              150
+                              2                                                                                               100
+                                                                                                                               50
+                              0                                                                                                 0
+                              -55      -35   -15    5      25    45      65   85    105   125                                        0   10    20      30        40    50     60   70    80      90    100
+                                                        Temperature (qC)                                                                                         VIN/VSupply (%)                          D004
+                                                                                              D002
+
+  图 8-5. Average Current vs. Conversion Rates and                                                                             图 8-6. Supply Current vs. Input Cell Voltage
+                   Temperature
+
+
+
+
+Copyright © 2021 Texas Instruments Incorporated                                                                                                                         Submit Document Feedback                 11
+                                                                                   Product Folder Links: TMP1075
+TMP1075
+ZHCSHX1E – MARCH 2018 – REVISED AUGUST 2021                                                                                                                                                   www.ti.com.cn
+
+                           90                                                                                                   1
+                                    1 MHz                                                                                                    V+ = 1.7 V
+                           80       400 KHz                                                                                    0.9           V+ = 2.5 V
+                           70       100 KHz                                                                                    0.8           V+ = 3.3 V
+                                    No I2C                                                                                                   V+ = 5.5 V
+     Supply Current (PA)
+
+
+
+
+                           60                                                                                                  0.7
+
+
+
+
+                                                                                                             Pin Voltage (V)
+                           50                                                                                                  0.6
+                           40                                                                                                  0.5
+                           30                                                                                                  0.4
+                           20                                                                                                  0.3
+                           10                                                                                                  0.2
+                             0                                                                                                 0.1
+                           -10                                                                                                  0
+                              1.5   2   2.5   3      3.5      4    4.5             5     5.5       6                                 0   1   2    3    4    5    6 7 8 9 10 11 12 13 14 15 16 17
+                                                  Supply Voltage (V)                               D005
+                                                                                                                                                                Pin Sink Current (mA)          D006
+
+                       图 8-7. Supply Current vs. I2C Bus Clock and                                         图 8-8. ALERT Pin Output Voltage vs. Sink Current
+                           Supply Voltage in Shutdown Mode
+                                                                          6
+                                                                          5
+                                                                          4
+                                                                          3
+                                                                          2
+                                                            Change in %
+
+
+
+
+                                                                          1
+                                                                          0
+                                                                          -1
+                                                                          -2
+                                                                          -3
+                                                                          -4
+                                                                          -5
+                                                                          -6
+                                                                           -55   -35    -15    5      25    45      65                       85       105       125
+                                                                                                   Temperature (qC)                                              D007
+
+                                              图 8-9. Sampling Period Change vs. Temperature (1.7 V to 5.5 V)
+
+
+
+
+12                         Submit Document Feedback                                                                                                               Copyright © 2021 Texas Instruments Incorporated
+
+                                                                                       Product Folder Links: TMP1075
+                                                                                                                                  TMP1075
+www.ti.com.cn                                                                                    ZHCSHX1E – MARCH 2018 – REVISED AUGUST 2021
+
+
+9 Detailed Description
+9.1 Overview
+The TMP1075 device is a digital temperature sensor that is optimal for thermal management and thermal
+protection applications. The TMP1075 is a SMBus and is I2C interface-compatible. It is also capable of
+coexisting in an I3C bus when in Mixed Fast Mode. The TMP1075 non-N orderables are specified over a
+temperature range of −55°C to +125°C and the TMP1075N orderable is specified over the −40°C to +125°C
+temperature range. The 图 9-1 section shows an internal block diagram of TMP1075 device.
+The temperature sensor thermal path runs through the package leads as well as the plastic package. The leads
+provide the primary thermal path due to the lower thermal resistance of the metal.
+9.2 Functional Block Diagram
+                                                                               V+
+
+
+
+
+             A2*
+
+          A0, A1*
+                                                    Serial
+             SCL                                                                                                       V+
+                                                  Interface
+             SDA                                                    Register
+                                                                     Bank
+                                                                                                                  **
+                                                                                                                              ALERT
+
+
+
+
+                                                                                    Oscillator   Control
+                                                                                                  Logic
+
+                                   Internal
+                                   Thermal
+                                   BJT Sensor
+
+
+                                                    Temperature
+                                                      Sensor                    ADC
+                                                      Circuitry
+
+
+
+
+                                                                               GND
+                    *Pin is not available on TMP1075N
+                    ** ESD Diode only in TMP1075N
+                                                      图 9-1. Functional Block Diagram
+
+
+
+
+Copyright © 2021 Texas Instruments Incorporated                                                                Submit Document Feedback    13
+                                                              Product Folder Links: TMP1075
+TMP1075
+ZHCSHX1E – MARCH 2018 – REVISED AUGUST 2021                                                                     www.ti.com.cn
+
+9.3 Feature Description
+9.3.1 Digital Temperature Output
+The digital output from each temperature measurement conversion is stored in the read-only temperature
+register. Which is a 12-bit, read-only register that stores the output of the most recent conversion. Two bytes
+must be read to obtain data. However, only the first 12 MSBs are used to indicate temperature while the
+remaining 4 LSB are set to zero. 表 9-1 lists the data format for the temperature. Negative numbers are
+represented in binary two's-complement format. After power-up or reset, the temperature register reads 0°C until
+the first conversion is complete.
+                                         表 9-1. Temperature Data Format
+             TEMPERATURE                                                 DIGITAL OUTPUT
+                 (°C)
+                                                        BINARY                                      HEX
+                127.9375                           0111 1111 1111 0000                              7FF0
+                  100                             0110 0100 0000 0000                               6400
+                   80                             0101 0000 0000 0000                               5000
+                   75                             0100 1011 0000 0000                               4B00
+                   50                             0011 0010 0000 0000                               3200
+                   25                             0001 1001 0000 0000                               1900
+                  0.25                            0000 0000 0100 0000                               0040
+                 0.0625                           0000 0000 0001 0000                               0010
+                   0                              0000 0000 0000 0000                               0000
+                –0.0625                            1111 1111 1111 0000                              FFF0
+                 –0.25                             1111 1111 1100 0000                             FFC0
+                  –25                             1110 0111 0000 0000                               E700
+                  –50                             1100 1110 0000 0000                              CE00
+                 –128                              1000 000 0000 0000                               8000
+
+
+9.3.2 I2C and SMBus Serial Interface
+The TMP1075 operates as a target device on the two-wire, SMBus and I2C interface-compatible bus.
+Connections to the bus are made through the open-drain I/O line SDA and SCL input pin. The SDA and SCL
+pins feature integrated spike suppression filters and Schmitt triggers to minimize the effects of input spikes and
+bus noise. The TMP1075 supports the transmission protocol for fast mode up to 400 kHz and high-speed mode
+up to 2.56 MHz. All data bytes are transmitted MSB first.
+9.3.2.1 Bus Overview
+The device that initiates the data transfer is called a host, and the devices controlled by the host are the target.
+The bus must be controlled by a host device that generates the SCL that controls the bus access and generates
+the START and STOP conditions.
+To address a specific device, a START condition is initiated. This is indicated by the host pulling the data line
+SDA from a high to low logic level when SCL is high. All target devices on the bus shift in the device address
+byte on the rising edge of the clock with the last bit indicating whether a read or write operation is intended.
+During the ninth clock pulse, the device being addressed responds to the host by generating an Acknowledge
+and pulling SDA low.
+Data transfer is then initiated and sent over eight clock pulses followed by an Acknowledge bit. During data
+transfer, SDA must remain stable when SCL is high because any change in SDA when SCL is high is interpreted
+as a control signal.
+When all data are transferred, the host generates a STOP condition indicated by pulling SDA from low to high
+logic level when SCL is high.
+
+
+
+14   Submit Document Feedback                                                       Copyright © 2021 Texas Instruments Incorporated
+
+                                              Product Folder Links: TMP1075
+                                                                                                                            TMP1075
+www.ti.com.cn                                                                           ZHCSHX1E – MARCH 2018 – REVISED AUGUST 2021
+
+
+9.3.2.2 Serial Bus Address
+To communicate with the TMP1075, the host must first address devices through an address byte. The device
+address byte consists of seven address bits and a direction bit indicating the intent of executing a read or write
+operation.
+The TMP1075 features three address pins to allow up to 32 devices (TMP1075N: 4) to be addressed on a single
+bus interface. 表 9-2 and 表 9-3 describe the pin logic levels used to configure the TMP1075 I2C address. The
+state of pins A0, A1, and A2 is sampled on every bus communication and must be set prior to any activity on the
+interface.
+                                                  表 9-2. TMP1075 Address Pins State
+       A2                A1               A0        7-BIT ADDRESS          A2            A1              A0          7-BIT ADDRESS
+        0                 0              SDA           1000000              0           SDA              SDA            1010000
+        0                 0              SCL           1000001              0           SDA              SCL            1010001
+        0                 1              SDA           1000010              0           SCL              SDA            1010010
+        0                 1              SCL           1000011              0           SCL              SCL            1010011
+        1                 0              SDA           1000100              1           SDA              SDA            1010100
+        1                 0              SCL           1000101              1           SDA              SCL            1010101
+        1                 1              SDA           1000110              1           SCL              SDA            1010110
+        1                 1              SCL           1000111              1           SCL              SCL            1010111
+        0                 0                0           1001000              0           SDA               0             1011000
+        0                 0                1           1001001              0           SDA               1             1011001
+        0                 1                0           1001010              0           SCL               0             1011010
+        0                 1                1           1001011              0           SCL               1             1011011
+        1                 0                0           1001100              1           SDA               0             1011100
+        1                 0                1           1001101              1           SDA               1             1011101
+        1                 1                0           1001110              1           SCL               0             1011110
+        1                 1                1           1001111              1           SCL               1             1011111
+
+
+                                                  表 9-3. TMP1075N Address Pins State
+                              A0                                                         7-BIT ADDRESS
+
+                               0                                                              1001000
+
+                               1                                                              1001001
+
+                              SDA                                                             1001010
+
+                              SCL                                                             1001011
+
+
+9.3.2.3 Pointer Register
+图 9-2 shows the internal register structure of the TMP1075, and 表 9-5 lists the pointer addresses of the register
+map. 表 9-4 shows that the register map reset value of the pointer register is 00h.
+
+
+
+
+Copyright © 2021 Texas Instruments Incorporated                                                          Submit Document Feedback    15
+                                                        Product Folder Links: TMP1075
+TMP1075
+ZHCSHX1E – MARCH 2018 – REVISED AUGUST 2021                                                                                www.ti.com.cn
+
+                                                       Pointer
+                                                       Register
+
+
+                                           Temperature
+                                             Register
+
+                                                                                    SCL
+                                           Conguraon
+                                             Register
+                                                                     I/O
+                                                 TLOW
+                                                Register
+                                                                   Control
+                                                                                    SDA
+                                                                  Interface
+                                                 THIGH
+                                                Register
+
+
+                                              Device ID*
+
+                                              * Not available on TMP1075N package
+
+                                          图 9-2. Internal Register Structure
+
+9.3.2.3.1 Pointer Register Byte [reset = 00h]
+
+                                              表 9-4. Pointer Register Byte
+      P7             P6              P5                    P4           P3                P2                   P1               P0
+       0              0              0                     0                                   Register Bits
+
+
+9.3.2.4 Writing and Reading to the TMP1075
+Accessing a particular register on the TMP1075 device is accomplished by writing the appropriate value to the
+pointer register. After Reset, the register value is set to zero. The value for the pointer register is the first byte
+transferred after the device address byte with the R/W bit low. Every write operation to the TMP1075 requires a
+value for the pointer register (see 图 9-3).
+When reading from the TMP1075 device, the last value stored in the pointer register by a write operation is used
+to determine which register is read by a read operation. To change the register pointer for a read operation, a
+new value must be written to the pointer register. This action is accomplished by issuing a device address byte
+with the R/ W bit low, followed by the pointer register byte. No additional data are required. The host can then
+generate a START condition and send the device address byte with the R/ W bit high to initiate the read
+command. See 图 9-5 for details of this sequence. If repeated reads from the same register are desired, the
+pointer register bytes do not have to be continually sent because the TMP1075 remembers the pointer register
+value until the value is changed by the next write operation.
+Register bytes are sent MSB first.
+9.3.2.5 Operation Mode
+The TMP1075 can operate as a receiver or transmitter. As a target device, the TMP1075 never drives the SCL
+line.
+9.3.2.5.1 Receiver Mode
+The first byte transmitted by the host is the device address with the R/W bit low. The TMP1075 then
+acknowledges reception of a valid address. The next byte transmitted by the host is the pointer register. The
+TMP1075 then acknowledges reception of the pointer register byte. The next byte or bytes are written to the
+register addressed by the pointer register. The TMP1075 acknowledges reception of each data byte. The host
+can terminate data transfer by generating a START or STOP condition.
+
+
+
+
+16   Submit Document Feedback                                                                  Copyright © 2021 Texas Instruments Incorporated
+
+                                                 Product Folder Links: TMP1075
+                                                                                                                   TMP1075
+www.ti.com.cn                                                                     ZHCSHX1E – MARCH 2018 – REVISED AUGUST 2021
+
+9.3.2.5.2 Transmitter Mode
+The first byte is transmitted by the host and is the device address, with the R/W bit high. The target device
+acknowledges reception of a valid device address. The next byte is transmitted by the device and is the most
+significant byte of the register indicated by the Pointer register. The host acknowledges reception of the data
+byte. The next byte transmitted by the device is the least significant byte. The host acknowledges reception of
+the data byte. The host can terminate data transfer by generating a Not-Acknowledge on reception of any data
+byte, or generating a START or STOP condition.
+9.3.2.6 SMBus Alert Function
+The TMP1075 supports the SMBus Alert function. When the TMP1075 is operating in interrupt mode (TM = 1),
+the ALERT pin of the TMP1075 can be connected as an SMBus Alert signal. When a host senses that an alert
+condition is present on the ALERT line, the host sends an SMBus Alert command (00011001) on the bus. If the
+ALERT pin of the TMP1075 is active, the devices acknowledge the SMBus Alert command and respond by
+returning the device address on the SDA line. The eighth bit (LSB) of the device address byte indicates if the
+temperature exceeding THIGH or falling below TLOW caused the alert condition. This bit is equal to POL if the
+temperature is greater than or equal to THIGH. This bit is equal to POL if the temperature is less than TLOW. See
+图 9-8 for details of this sequence.
+If multiple devices on the bus respond to the SMBus Alert command, arbitration during the device address
+portion of the SMBus Alert command determines which device clears the alert status. If the TMP1075 wins the
+arbitration, the ALERT pin becomes inactive at the completion of the SMBus Alert command. If the TMP1075
+loses the arbitration, the ALERT pin remains active.
+9.3.2.7 General Call- Reset Function
+The TMP1075 responds to the two-wire general call address (0000 000) if the eighth bit is 0. The device
+acknowledges the general call address and responds to commands in the second byte. If the second byte is
+00000 110, the TMP1075 resets the internal registers to the power-up reset values.
+9.3.2.8 High-Speed Mode (HS)
+For the two-wire bus to operate at frequencies above 400 kHz, the host device must issue an HS mode host
+code (00001XXX) as the first byte after a START condition to switch the bus to high-speed operation. The
+TMP1075 device does not acknowledge this byte, but it does switch the input filters on the SDA and SCL and
+the output filters on the SDA to operate in HS mode. After the HS mode host code is issued, the host transmits a
+two-wire device address to initiate a data transfer operation. The bus continues to operate in HS mode until a
+STOP condition occurs on the bus. Upon receiving the STOP condition, the TMP1075 switches the input and
+output filters back to fast-mode operation.
+9.3.2.9 Coexists in I3C Mixed Fast Mode
+A bus with both I3C and I2C interfaces is referred to as a mixed fast mode with clock speeds up to 12.5 MHz. In
+order for the TMP1075, which is an I2C device, to coexist in the same bus, the device incorporated a spike
+suppression filter of 50 ns on the SDA and SCL pins to avoid any interference to the bus when communicating
+with I3C devices.
+9.3.2.10 Time-Out Function
+The TMP1075 resets the serial interface if SCL is held low by the host or SDA is held low by the TMP1075 for 25
+ms (TMP1075N: 30 ms) (typical) between a START and STOP condition. The TMP1075 releases the SDA bus
+and waits for a START condition. To avoid activating the time-out function, a communication speed of at least 1
+kHz must be maintained.
+9.3.3 Timing Diagrams
+The TMP1075 is two-wire SMBus and I2C interface-compatible. 图 9-3 to 图 9-8 describe the various operations
+on the TMP1075. The following list provides bus definitions.
+Bus Idle: Both SDA and SCL lines remain high.
+
+
+Copyright © 2021 Texas Instruments Incorporated                                                 Submit Document Feedback    17
+                                                  Product Folder Links: TMP1075
+TMP1075
+ZHCSHX1E – MARCH 2018 – REVISED AUGUST 2021                                                                                                                                         www.ti.com.cn
+
+Start Data Transfer: A change in the state of the SDA line from high to low when the SCL line is high defines a
+START condition. Each data transfer is initiated with a START condition.
+Stop Data Transfer: A change in the state of the SDA line from low to high when the SCL line is high defines a
+STOP condition. Each data transfer is terminated with a repeated START or STOP condition.
+Data Transfer: The number of data bytes transferred between a START and a STOP condition is not limited and
+is determined by the host device. The receiver acknowledges the transfer of data.
+Acknowledge: Each receiving device, when addressed, is obliged to generate an Acknowledge bit. A device
+that acknowledges must pull down the SDA line during the Acknowledge clock pulse in such a way that the SDA
+line is stable low during the high period of the Acknowledge clock pulse. Setup and hold times must be taken
+into account. On a host receive, the termination of the data transfer can be signaled by the host generating a
+Not-Acknowledge on the last byte that is transmitted by the target device.
+9.3.4 Two-Wire Timing Diagrams
+                           1                                                             9       1                                                                  9
+
+         SCL                                                                                                                                                                 «
+
+
+        SDA                 1        0       A4    A3     A2     A1    A0      R/W               0       0        0        0        P3        P2        P1    P0             «
+               Start By                                                                 ACK By                                                                 ACK By
+                Host                                                                    Device                                                                 Device
+                                Frame 1 Two Wire Device Address Byte                                              Frame 2 Pointer Register Byte
+
+                            1                                                             9                  1                                                                  9
+       SCL
+ (Continued)
+
+
+
+       SDA
+                          D15 D14 D13 D12 D11 D10                      D9     D8                             D7       D6       D5        D4        D3    D2    D1       D0
+ (Continued)
+                                                                                   ACK By                                                                                    ACK By         Stop By
+                                                                                   Device                                                                                    Device          Host
+
+                                              Frame 3 Data Byte 1                                                          Frame 4 Data Byte 2
+
+
+                                             图 9-3. Two-Wire Timing Diagram for Write Word Format
+
+                                         1                                                           9       1                                                                 9
+
+                  SCL                                                                                                                                                                 …
+
+
+                  SDA                A6       A5    A4      A3    A2    A1         A0          R/W           0        0        0         0         0     0     P1       P0            …
+                          Start By                                                               ACK By                                                                  ACK By
+                          Master                                                                 Device                                                                  Device
+                                             Frame 1 Two-Wire Device Address Byte                                              Frame 2 Pointer Register Byte
+
+                                      1                                                              9                                                                                  9
+              SCL
+        (Continued)
+
+
+
+              SDA
+                                     D15     D14    D13 D12 D11 D10            D9         D8
+        (Continued)
+                                                                                               ACK By     StopBy
+                                                                                               Device     Master
+                                                        Frame 3 Data Byte 1
+
+
+                                         图 9-4. Two-Wire Timing Diagram for Write Single Byte Format
+
+
+18    Submit Document Feedback                                                                                                                Copyright © 2021 Texas Instruments Incorporated
+
+                                                                       Product Folder Links: TMP1075
+                                                                                                                                                                                                TMP1075
+www.ti.com.cn                                                                                                                           ZHCSHX1E – MARCH 2018 – REVISED AUGUST 2021
+
+                                                  1                                                        9         1                                                      9
+
+                            SCL                                                                                                                                                     «
+
+
+                         SDA                  1            0    A4     A3     A2    A1   A0     R /W                 0    0    0        0        P3     P2     P1    P0             «
+                                  Start By                                                             ACK By                                                             ACK By
+                                   Host                                                                Device                                                             Device
+                                                           Frame 1 Two-Wire Device Address Byte                                     Frame 2 Pointer Register Byte
+
+
+                                                  1                                                        9         1                                                      9
+                          SCL                                                                                                                                                           «
+                   (Continued)
+
+
+
+                         SDA                                                                                                                                                    «
+                                              1            0    A4     A3     A2    A1   A0    R/W                D15    D14   D13     D12      D11     D10    D9    D8
+                   (Continued)
+                                  Start By                                                             ACK By                                             From                  ACK By
+                                   Host                                                                Device                                            Device                  Host
+
+                                                           Frame 3 Two-Wire Device Address Byte                                Frame 4 Data Byte 1 Read Register
+
+
+                                     1                                                          9
+                          SCL
+                   (Continued)
+
+
+
+                         SDA
+                               D7            D6        D5       D4    D3      D2   D1    D0
+                   (Continued)
+                                                                      From                    ACK By           Stop By
+                                                                     Device                    Host             Host
+                                                       Frame 5 Data Byte 2 Read Register
+
+
+                                                  图 9-5. Two-Wire Timing Diagram for Read Word Format
+
+                              1                                                                        9         1                                                                  9
+
+           SCL                                                                                                                                                                              «
+
+
+           SDA                1          0            A4       A3    A2       A1    A0    R /W                   0       0      0           0      P3        P2     P1     P0               «
+                  Start By                                                                          ACK By                                                                      ACK By
+                   Host                                                                             Device                                                                      Device
+
+                                         Frame 1 Two-Wire Device Address Byte                                                       Frame 2 Pointer Register Byte
+
+
+                              1                                                                        9         1                                                                  9
+           SCL
+    (Continued)
+
+
+
+          SDA
+                              1          0            A4       A3    A2       A1    A0    R/W                   D15      D14   D13      D12       D11        D10    D9     D8
+    (Continued)
+                 Start By                                                                           ACK By                                                    From              NACK By         Stop By
+                  Host                                                                              Device                                                    Device              Host           Host
+
+                                         Frame 3 Two-Wire Device Address Byte                                                  Frame 4 Data Byte 1 Read Register
+
+                                                                                                                                                Copyright © 2017, Texas Instruments Incorporated
+
+                                         图 9-6. Two-Wire Timing Diagram for Read Single Byte Format
+
+
+
+
+Copyright © 2021 Texas Instruments Incorporated                                                                                                                     Submit Document Feedback              19
+                                                                                   Product Folder Links: TMP1075
+TMP1075
+ZHCSHX1E – MARCH 2018 – REVISED AUGUST 2021                                                                                                                                             www.ti.com.cn
+
+                              1                                                                9           1                                                                 9
+
+            SCL
+
+
+
+
+            SDA               0       0        0    0       0       0         0      R/W               1   0        0          0       0       0    1       1         0
+
+                  Start By                                                                 ACK By                                                       From              ACK By   Stop By
+                   Host                                                                    Device                                                       Host              Device    Host
+
+                                               Frame 1 Address Byte                                                                  Frame 2 Command Byte
+
+
+                                              图 9-7. General-Call Reset Command Timing Diagram
+
+            ALERT
+
+
+                                  1                                                                9       1                                                                 9
+
+             SCL
+
+
+
+
+             SDA                  0       0     0       1       1       0      0      R/W                      1        0       A4     A3      A2   A1         A0   Status
+
+
+                   Start By                                                                   ACK By                                                     From             NACK By Stop By
+                    Host                                                                      Device                                                    Device              Host   Host
+
+                                  Frame 1 SMBus ALERT Response Address Byte                                                        Frame 2 Device Address Byte
+
+
+                                                        图 9-8. Timing Diagram for SMBus Alert
+
+9.4 Device Functional Modes
+9.4.1 Shutdown Mode (SD)
+Shutdown mode (SD) of the TMP1075 device allows the user to conserve power by shutting down all device
+circuitry except the serial interface, which significantly reduces the current consumption. SD is initiated when the
+SD bit in the configuration register is set to 1. When SD is equal to 0, the device stays in continuous conversion
+mode.
+9.4.2 One-Shot Mode (OS)
+The TMP1075 features a one-shot mode (OS) temperature measurement. When the device is in shutdown
+mode, writing 1 to the OS bit starts a single temperature conversion. The device returns to the shutdown state at
+the completion of the single conversion. This feature is useful to reduce power consumption in the TMP1075
+when continuous temperature monitoring is not required.
+When the configuration register is read, the OS bit always reads 0 on TMP1075 non-N orderables. On the
+TMP1075N orderable, the OS bit reads back 0 during the one-shot conversion and 1 after the conversion cycle.
+9.4.3 Continuous Conversion Mode (CC)
+When the device is operating in continuous conversion mode (SD=0), every conversion cycle consists of an
+active conversion, followed by a standby (see 图 9-9). The device consumes a higher current during an active
+conversion, and lower current during standby. Active conversion time is 5.5 ms (TMP1075N: 23 ms) before the
+part goes in standby. 表 9-8 shows the list of conversion cycle configured using [R1:R0] bits in the configuration
+register.
+                                                                                     1 Conversion Cycle
+
+                                                                                                                            Acve Conversion
+                                                                                              Standby
+                                                                Ac ve
+                                                            Conversion me                                                  Acve
+                                                                                                                        Conversion me
+
+                                                                                   Start-Up             Start of
+                                                                                                       Conversion
+
+
+                                                                图 9-9. Conversion Rate Diagram
+
+20   Submit Document Feedback                                                                                                                           Copyright © 2021 Texas Instruments Incorporated
+
+                                                                            Product Folder Links: TMP1075
+                                                                                                                                  TMP1075
+www.ti.com.cn                                                                                   ZHCSHX1E – MARCH 2018 – REVISED AUGUST 2021
+
+
+9.4.4 Thermostat Mode (TM)
+The thermostat mode bit indicates whether ALERT pin operates in comparator mode (TM = 0) or interrupt mode
+(TM = 1). ALERT pin mode is controlled by TM (bit 9) of the configuration register. Any write to the TM bit
+changes the ALERT pin to a none active condition, clears the faults count, and clears the alert interrupt history
+on the TMP1075 non-N orderables. The ALERT pin can be disabled in both comparator and interrupt modes if
+both limit registers are set to the rail values TLOW = –128°C and THIGH = +127.9375°C on the TMP1075 non-N
+orderables.
+9.4.4.1 Comparator Mode (TM = 0)
+In comparator mode (TM = 0), the ALERT pin becomes active when the temperature equals or exceeds the
+value in THIGH for a consecutive number of Fault Queue bits [F1:F0]. The ALERT pin remains active until the
+temperature falls below the indicated TLOW value for the same number of faults.
+The difference between the two limits acts as a hysteresis on the comparator output, and a fault counter
+prevents false alerts as a result of system noise. The SMBus Alert response function is ignored in the
+comparator mode.
+9.4.4.2 Interrupt Mode (TM = 1)
+In interrupt mode (TM = 1), the device starts to compare temperature readings with the high limit register value.
+The ALERT pin becomes active when the temperature equals or exceeds THIGH for a consecutive number of
+conversions as set by the Fault Queue bits [F1:F0]. The ALERT pin remains active until it is cleared by one of
+three events: a read of any register, a successful SMBus Alert response, or a shutdown command. After the
+ALERT pin is cleared, the device starts to compare temperature readings with the TLOW. The ALERT pin
+becomes active again only when the temperature drops below TLOW for a consecutive number of conversions as
+set by the Fault Queue bits. The ALERT pin remains active until cleared by any of the same three clearing
+events. After the ALERT pin is cleared by one of the events, the cycle repeats and the device resumes to
+compare the temperature to T HIGH. The interrupt mode history is cleared by a change in the TM=0 bit, setting the
+device to SD mode, or resetting the device on the TMP1075 non-N orderables.
+9.4.4.3 Polarity Mode (POL)
+The polarity bit allows the user to adjust the polarity of the ALERT pin output. If the POL bit is set to 0 (default),
+the ALERT pin becomes active low. When POL bit is set to 1, the ALERT pin becomes active high and the state
+of the ALERT pin is inverted. 图 9-10 shows the operation of the ALERT pin in various modes.
+
+
+                                                                                                      T HIGH
+                                                      Measured
+                                                    Temperature
+
+                                                                                                      T LOW
+
+
+
+
+                                                   ALERT PIN
+                                              (ComparatorMode)
+                                                      POL=0
+
+                                                       ALERT PIN
+                                                  (InterruptMode)
+                                                          POL=0
+                                                   ALERT PIN
+                                              (ComparatorMode)
+                                                      POL=1
+                                                       ALERT PIN
+                                                  (InterruptMode)
+                                                          POL=1
+
+
+
+
+                                                                          Rea d      Read      Read
+                                                                                    Time
+
+
+                                             图 9-10. Output Transfer Function Diagrams
+
+
+Copyright © 2021 Texas Instruments Incorporated                                                                Submit Document Feedback   21
+                                                               Product Folder Links: TMP1075
+TMP1075
+ZHCSHX1E – MARCH 2018 – REVISED AUGUST 2021                                                                                                 www.ti.com.cn
+
+9.5 Register Map
+                                                        表 9-5. TMP1075 Register Map
+      ADDRESS                    TYPE   RESET                    ACRONYM                               REGISTER NAME                         SECTION
+        00h                       R     0000h        TEMP                                 Temperature result register                            Go
+        01h                      R/W    00FFh        CFGR                                 Configuration register                                 Go
+        02h                      R/W    4B00h        LLIM                                 Low limit register                                     Go
+        03h                      R/W    5000h        HLIM                                 High limit register                                    Go
+                 (1)
+        0Fh                       R     7500h        DIEID                                Device ID register                                     Go
+
+(1)     Device ID register not available on TMP1075N
+
+                                                                              Note
+        TMP1075 Configuration register supports single byte read and write for software compatibility with
+        xx75 standard temperature sensors.
+
+9.5.1 Register Descriptions
+                                                     表 9-6. TMP1075 Access Type Codes
+ Access Type                            Code                                     Description
+ Read Type
+ R                                      R                                        Read
+ Write Type
+ W                                      W                                        Write
+ Reset or Default Value
+ -n                                                                              Value after reset or the default value
+
+
+9.5.1.1 Temperature Register (address = 00h) [default reset = 0000h]
+The temperature register of the TMP1075 is a 12-bit, read-only register that stores the result of the most recent
+conversion (see 图 9-11). Data is represented in binary two's complement format. The first 12 bits are used to
+indicate temperature, with all remaining bits equal to zero. The least significant byte does not have to be read if
+that information is not needed. Following power-up or reset, the temperature register value is 0°C until the first
+conversion is complete.
+                                                         图 9-11. Temperature Register
+         15                       14            13                   12                  11                10                  9                  8
+         T11                      T10           T9                   T8                  T7                T6                 T5                 T4
+         R-0                      R-0          R-0                  R-0                  R-0              R-0                R-0                R-0
+
+             7                     6            5                    4                   3                  2                  1                  0
+         T3                       T2            T1                   T0                  0                  0                  0                  0
+         R-0                      R-0          R-0                  R-0                  R-0              R-0                R-0                R-0
+
+                                            表 9-7. Temperature Register Field Description
+      BIT              FIELD                                TYPE         RESET       DESCRIPTION
+      15:4             T[11:0]                              R            000h        12-bit, read-only register that stores the most recent
+                                                                                     temperature conversion results.
+       3:0             —                                    R            0h          Not used
+
+
+
+
+22      Submit Document Feedback                                                                                Copyright © 2021 Texas Instruments Incorporated
+
+                                                                Product Folder Links: TMP1075
+                                                                                                                               TMP1075
+www.ti.com.cn                                                                          ZHCSHX1E – MARCH 2018 – REVISED AUGUST 2021
+
+
+9.5.1.2 Configuration Register (address = 01h) [default reset = 00FFh (60A0h TMP1075N)]
+The configuration register is an 16-bit read/write register used to store bits that control the operational modes of
+the temperature sensor. Read and write operations are performed MSB first. 图 9-12 shows the format of the
+configuration register for the TMP1075, followed by a breakdown of the register bits. The power-up or reset
+value of the configuration register are all bits equal to 00FFh (TMP1075N: 60A0h). Only single byte writes and
+reads must be used when pointing to the configuration register for proper operation on the TMP1075N
+orderable.
+                                              图 9-12. Configuration Register: TMP1075
+           15              14                 13            12             11                10                  9              8
+          OS               R1                 R0            F1             F0               POL                 TM             SD
+      R/W-0               R/W-0             R/W-0          R/W-0         R/W-0             R/W-0               R/W-0         R/W-0
+
+           7                6                     5          4             3                 2                   1              0
+           1                1                     1          1             1                 1                   1              1
+      R/W-1               R/W-1             R/W-1          R/W-1         R/W-1             R/W-1               R/W-1         R/W-1
+
+                                             图 9-13. Configuration Register: TMP1075N
+           15              14                 13            12             11                10                  9              8
+          OS               R1                 R0            F1             F0               POL                 TM             SD
+      R/W-0                R-1                R-1          R/W-0         R/W-0             R/W-0               R/W-0         R/W-0
+
+           7                6                     5          4             3                 2                   1              0
+           1                0                     x          0             0                 0                   0              0
+     Reserved            Reserved         Reserved        Reserved      Reserved         Reserved             Reserved      Reserved
+
+                                          表 9-8. Configuration Register Field Description
+     BIT        FIELD             TYPE                RESET                      DESCRIPTION
+     15         OS                R/W                 0                          One-shot conversion mode. Writing 1, starts a single
+                                                                                 temperature conversion. Read returns 0.
+    14:13       R[1:0]            R/W                 0                          Conversion rate setting when device is in continuous
+                                  R (TMP1075N)        11 (TMP1075N)              conversion mode
+                                                                                 00: 27.5 ms conversion rate
+                                                                                 01: 55 ms conversion rate
+                                                                                 10: 110 ms conversion rate
+                                                                                 11: 220 ms conversion rate (35 ms TMP1075N)
+    12:11       F[1:0]            R/W                 0                          Consecutive fault measurements to trigger the alert
+                                                                                 function
+                                                                                 00: 1 fault
+                                                                                 01: 2 faults
+                                                                                 10: 3 faults (4 faults TMP1075N)
+                                                                                 11: 4 faults (6 faults TMP1075N)
+     10         POL               R/W                 0                          Polarity of the output pin
+                                                                                 0: Active low ALERT pin
+                                                                                 1: Active high ALERT pin
+      9         TM                R/W                 0                          Selects the function of the ALERT pin
+                                                                                 0: ALERT pin functions in comparator mode
+                                                                                 1: ALERT pin functions in interrupt mode
+      8         SD                R/W                 0                          Sets the device in shutdown mode to conserve power
+                                                                                 0: Device is in continuous conversion
+                                                                                 1: Device is in shutdown mode
+     7:0        —                 R/W                 FFh                        Not used
+                                                      A0h (TMP1075N)             Reserved on TMP1075N package
+
+
+
+
+Copyright © 2021 Texas Instruments Incorporated                                                          Submit Document Feedback       23
+                                                      Product Folder Links: TMP1075
+TMP1075
+ZHCSHX1E – MARCH 2018 – REVISED AUGUST 2021                                                                                   www.ti.com.cn
+
+                                                                Note
+       The configuration register supports single-byte read and write over I2C bus to ensure software
+       compatibility with other xx75 standard temperature sensors like TMP75 and LM75. When a single byte
+       write is performed, the data byte on the I2C bus updates the register bits 15-8. Similarly when a single
+       byte read is performed, the data bits 15-8 is transferred over the I2C bus.
+
+9.5.1.3 Low Limit Register (address = 02h) [default reset = 4B00h]
+The register is configured as a 12-bit, read/write register and data is represented in two's complement format. 图
+9-14 shows the layout for TLOW is the same as the temperature register. The default reset value is 4B00h and
+corresponds to 75°C.
+                                              图 9-14. Low Limit Register
+        15                14        13                12                 11                 10                  9                     8
+       L11                L10       L9                L8                 L7                 L6                  L5                   L4
+      R/W-0              R/W-1    R/W-0              R/W-0             R/W-1              R/W-0               R/W-1                 R/W-1
+
+           7               6         5                 4                  3                  2                  1                     0
+        L3                L2        L1                L0                  0                  0                  0                     0
+      R/W-0              R/W-0    R/W-0              R/W-0             R/W-0              R/W-0               R/W-0                 R/W-0
+
+                                   表 9-9. Low Limit Register Field Description
+     BIT       FIELD                          TYPE         RESET       DESCRIPTION
+     15:4      L[11:0]                        R/W          4B0h        12-bit, read-write register that stores the low limit for comparison
+                                                                       with temperature results.
+     3:0       —                              R/W          0h          Not used
+
+
+9.5.1.4 High Limit Register (address = 03h) [default reset = 5000h]
+The register is configured as a 12-bit, read/write register and data is represented in two's complement format. 图
+9-15 show the layout for THIGH is the same as the temperature register. The default reset value is 5000h and
+corresponds to 80°C.
+                                              图 9-15. High Limit Register
+        15                14        13                12                 11                 10                  9                     8
+       H11               H10        H9                H8                 H7                 H6                 H5                    H4
+      R/W-0              R/W-1    R/W-0              R/W-1             R/W-0              R/W-0               R/W-0                 R/W-0
+
+           7               6         5                 4                  3                  2                  1                     0
+        H3                H2        H1                H0                  0                  0                  0                     0
+      R/W-0              R/W-0    R/W-0              R/W-0             R/W-0              R/W-0               R/W-0                 R/W-0
+
+                                  表 9-10. High Limit Register Field Description
+     BIT       FIELD                          TYPE         RESET       DESCRIPTION
+     15:4      H[11:0]                        R/W          500h        12-bit, read-write register that stores the high limit for
+                                                                       comparison with temperature results.
+     3:0       —                              R/W          0h          Not used
+
+
+
+
+24     Submit Document Feedback                                                                  Copyright © 2021 Texas Instruments Incorporated
+
+                                                Product Folder Links: TMP1075
+                                                                                                                                  TMP1075
+www.ti.com.cn                                                                            ZHCSHX1E – MARCH 2018 – REVISED AUGUST 2021
+
+
+9.5.1.5 Device ID Register (address = 0Fh) [default reset = 7500]
+图 9-16 shows this read-only register reads the device ID, and this register only available on the TMP1075 non-N
+orderables.
+                                                      图 9-16. Device ID Register
+        15                  14                13              12             11                10                9                 8
+      DID15                DID14            DID13            DID12         DID11             DID10             DID9              DID8
+        R-0                 R-1               R-1             R-1           R-0               R-1               R-0               R-1
+
+           7                 6                    5            4              3                2                 1                 0
+       DID7                DID6              DID5            DID4           DID3             DID2              DID1              DID0
+        R-0                 R-0               R-0             R-0           R-0               R-0               R-0               R-0
+
+                                            表 9-11. Device ID Register Field Description
+     BIT       FIELD                                  TYPE         RESET   DESCRIPTION
+     15:0      DID[15:0]                              R/W          7500h   16-bit, read-only register that stores the die ID for the device.
+                                                                           The MSB reads the static value 75h to indicate the device name
+                                                                           for TMP1075
+
+
+
+
+Copyright © 2021 Texas Instruments Incorporated                                                            Submit Document Feedback            25
+                                                        Product Folder Links: TMP1075
+TMP1075
+ZHCSHX1E – MARCH 2018 – REVISED AUGUST 2021                                                                        www.ti.com.cn
+
+
+10 Application and Implementation
+                                                             Note
+      以下应用部分中的信息不属于 TI 器件规格的范围，TI 不担保其准确性和完整性。TI 的客 户应负责确定
+      器件是否适用于其应用。客户应验证并测试其设计，以确保系统功能。
+
+10.1 Application Information
+The TMP1075 can measure the PCB temperature of the location where the user mounts the device. The
+TMP1075 features two-wire SMBus and I2C interface compatibility, with the TMP1075 allowing up to 32
+(TMP1075N: 4) devices on one bus. The TMP1075 requires a pullup resistor on the SDA pin, and if needed, on
+the SCL and ALERT pins. A 0.01-μF bypass capacitor is also required (see 图 10-1 ).
+10.2 Typical Application
+                                                                                      Supply Voltage
+                                                                                 1.7 V to 5.5 V (TMP1075)
+                                                                                1.62 V to 3.6 V (TMP1075N)
+                                                  Pullup Resistors                Supply Bypass
+                                                       5 k                         Capacitor
+                                                                                     0.01 µF
+
+
+
+                                                     SDA                  V+
+                                                                          A0
+                       Two-Wire                      SCL
+                     Host Controller
+
+
+                                                     ALERT
+
+                                                     GND
+
+
+
+
+                                              图 10-1. Typical Connections
+
+10.2.1 Design Requirements
+The recommended value for the pullup resistor is 5 kΩ. In some applications, the pullup resistor can be lower or
+higher than 5 kΩ, but the maximum current through the pullup current is recommended to not exceed 3 mA on
+the SCL and SDA pins. The SCL, SDA, A0, and A1, lines can be pulled up to a supply that is higher than V+.
+The ALERT line can be pulled up to a supply higher than V+ on the TMP1075 non-N orderables. The A2 pin can
+only be connected to GND or V+. When the ALERT pin is not used, it can either be connected GND or left
+floating.
+10.2.2 Detailed Design Procedure
+Place the TMP1075 device in close proximity to the heat source that must be monitored with a proper layout for
+good thermal coupling. This placement ensures that temperature changes are captured within the shortest
+possible time interval. To maintain accuracy in applications that require air or surface temperature measurement,
+take care to isolate the package and leads from ambient air temperature. A thermally-conductive adhesive is
+helpful in achieving accurate surface temperature measurement.
+10.2.2.1 Migrating From the xx75 Device Family
+The TMP1075 is designed specifically to be a pin-to-pin compatible replacement with xx75 family of devices.
+This includes considerations for software compatibility. The two byte registers of the TMP1075 dynamically
+
+
+26   Submit Document Feedback                                                          Copyright © 2021 Texas Instruments Incorporated
+
+                                                Product Folder Links: TMP1075
+                                                                                                                         TMP1075
+www.ti.com.cn                                                                     ZHCSHX1E – MARCH 2018 – REVISED AUGUST 2021
+
+support single byte read or write, meaning that replacing older xx75 standard temperature sensors should not
+require any updates to existing code.
+10.2.3 Application Curve
+For application curves, see 表 10-1:
+                                                  表 10-1. Table of Graphs
+                                  FIGURE                                                      TITLE
+                                   图 8-9                              Sampling Period Change vs. Temperature (1.7 V to 5.5 V)
+
+
+11 Power Supply Recommendations
+The TMP1075 D, DGK, and DSG packages operate with a power supply in the range of 1.7 V to 5.5 V
+(TMP1075N DRL package operates from 1.62 V to 3.6 V). A power-supply bypass capacitor is required for
+precision and stability. Place this power-supply bypass capacitor as close to the supply and ground pins of the
+device as possible. A typical value for this supply bypass capacitor is 0.01 μF. Applications with noisy or high-
+impedance power supplies can require a bigger bypass capacitor to reject power-supply noise.
+To minimize device self-heating and improve temperature precision, it is recommended to:
+• Use the minimum supply voltage rail available
+• Avoid communication over I2C bus during ADC conversion
+• Use one-shot mode to minimize power consumption
+• Set I2C signal levels VIL close to ground and VIH above 90% of V+
+• Maintain the I2C bus signals positive edge less than 1 µs by using a pull-up resistor < 10 kΩ
+• Connect the address pins A0 and A1 to either ground or V+
+
+
+
+
+Copyright © 2021 Texas Instruments Incorporated                                                    Submit Document Feedback     27
+                                                  Product Folder Links: TMP1075
+TMP1075
+ZHCSHX1E – MARCH 2018 – REVISED AUGUST 2021                                                                                                 www.ti.com.cn
+
+
+12 Layout
+12.1 Layout Guidelines
+Place the power-supply bypass capacitor as close to the supply and ground pins as possible. The recommended
+value of this bypass capacitor is 0.01 μF. Pullup the open-drain output pins SDA and ALERT through 5-kΩ
+pullup resistors. The SCL requires a pullup resistor only if the microprocessor output is open drain.
+12.2 Layout Example
+                                                                 Via to Power or Ground Plane
+
+                                                                 Via to Internal Layer
+
+
+
+
+                                                                                                Supply Bypass
+                                                                                                  Capacitor
+                                           Pull-Up Resistors
+
+
+                                                                                                                 Supply Voltage
+                                                           SDA                           V+
+
+                                                           SCL                           A0
+
+                                                           ALERT                         A1
+
+                                                           GND                           A2
+
+
+                       Serial Bus Traces
+
+
+                                                                   Ground Plane for
+                                                                   Thermal Coupling
+                                                                    to Heat Source
+
+
+
+
+                                                                      Heat Source
+
+
+
+
+                                                   图 12-1. Layout Example (D Package)
+
+
+
+
+28   Submit Document Feedback                                                                                   Copyright © 2021 Texas Instruments Incorporated
+
+                                                                 Product Folder Links: TMP1075
+                                                                                                                                                                TMP1075
+www.ti.com.cn                                                                                                              ZHCSHX1E – MARCH 2018 – REVISED AUGUST 2021
+
+                                                                              Via to Power or Ground Plane
+
+                                                                              Via to Internal Layer
+
+
+
+
+                                                        Pull-Up Resistors
+                                                                                                                Supply Bypass
+                                                                                                                  Capacitor
+
+
+
+
+                                                                                                                                   Supply Voltage
+                                                                            SDA                        V+
+
+                                                                            SCL                            A0
+
+                                                                            ALERT                          A1
+
+                                                                            GND                            A2
+
+
+
+
+                                                                                  Ground Plane for
+                                                                                  Thermal Coupling
+                                                                                   to Heat Source
+
+                                    Serial Bus Traces
+
+
+
+
+                                                                                    Heat Source
+
+
+
+
+                                                   图 12-2. Layout Example (DGK Package)
+
+                                                                              Via to Power or Ground Plane
+
+                                                                              Via to Internal Layer
+
+
+
+
+                                                        Pull-Up Resistors                                       Supply Bypass
+                                                                                                                  Capacitor
+
+
+
+
+                                                                                                                                   Supply Voltage
+                                                                              SDA                     V+
+
+
+                                                                              SCL                     A0
+
+
+                                                                              ALERT                   A1
+
+
+                                                                              GND                     A2
+
+
+
+                                                                                  Ground Plane for
+                                                                                  Thermal Coupling
+                                                                                   to Heat Source
+                                    Serial Bus Traces
+
+
+
+
+                                                                                    Heat Source
+
+
+
+
+                                                   图 12-3. Layout Example (DSG Package)
+
+
+
+
+Copyright © 2021 Texas Instruments Incorporated                                                                                              Submit Document Feedback   29
+                                                                    Product Folder Links: TMP1075
+TMP1075
+ZHCSHX1E – MARCH 2018 – REVISED AUGUST 2021                                                                                      www.ti.com.cn
+
+                                                               Via to Power or Ground Plane
+
+                                                               Via to Internal Layer
+
+
+
+
+                                               Pull-Up Resistors
+
+
+
+
+                                                              SCL                  SDA
+
+                                                                                                Supply Voltage
+                                                              GND                     V+
+
+
+                                                              ALERT             ADD0
+                                                                                              Supply Bypass
+                                                                                                Capacitor
+
+
+
+
+                                                                   Ground Plane for
+                                                                   Thermal Coupling
+                                                                    to Heat Source
+
+
+                           Serial Bus Traces
+
+
+
+                                                                     Heat Source
+
+
+
+
+                                           图 12-4. Layout Example (DRL Package)
+
+
+
+
+30   Submit Document Feedback                                                                        Copyright © 2021 Texas Instruments Incorporated
+
+                                                     Product Folder Links: TMP1075
+                                                                                                                                 TMP1075
+www.ti.com.cn                                                                             ZHCSHX1E – MARCH 2018 – REVISED AUGUST 2021
+
+
+13 Device and Documentation Support
+13.1 接收文档更新通知
+要接收文档更新通知，请导航至 ti.com 上的器件产品文件夹。点击订阅更新 进行注册，即可每周接收产品信息更
+改摘要。有关更改的详细信息，请查看任何已修订文档中包含的修订历史记录。
+13.2 支持资源
+TI E2E™ 支持论坛是工程师的重要参考资料，可直接从专家获得快速、经过验证的解答和设计帮助。搜索现有解
+答或提出自己的问题可获得所需的快速设计帮助。
+链接的内容由各个贡献者“按原样”提供。这些内容并不构成 TI 技术规范，并且不一定反映 TI 的观点；请参阅
+TI 的《使用条款》。
+13.3 Trademarks
+TI E2E™ is a trademark of Texas Instruments.
+所有商标均为其各自所有者的财产。
+13.4 Electrostatic Discharge Caution
+                    This integrated circuit can be damaged by ESD. Texas Instruments recommends that all integrated circuits be handled
+                    with appropriate precautions. Failure to observe proper handling and installation procedures can cause damage.
+                    ESD damage can range from subtle performance degradation to complete device failure. Precision integrated circuits may
+                    be more susceptible to damage because very small parametric changes could cause the device not to meet its published
+                    specifications.
+
+
+13.5 术语表
+ TI 术语表                   本术语表列出并解释了术语、首字母缩略词和定义。
+
+14 Mechanical, Packaging, and Orderable Information
+The following pages include mechanical, packaging, and orderable information. This information is the most
+current data available for the designated devices. This data is subject to change without notice and revision of
+this document. For browser-based versions of this data sheet, refer to the left-hand navigation.
+
+
+
+
+Copyright © 2021 Texas Instruments Incorporated                                                            Submit Document Feedback          31
+                                                       Product Folder Links: TMP1075
+                                          重要声明和免责声明
+TI 提供技术和可靠性数据（包括数据表）、设计资源（包括参考设计）、应用或其他设计建议、网络工具、安全信息和其他资源，不保证没
+有瑕疵且不做出任何明示或暗示的担保，包括但不限于对适销性、某特定用途方面的适用性或不侵犯任何第三方知识产权的暗示担保。
+这些资源可供使用 TI 产品进行设计的熟练开发人员使用。您将自行承担以下全部责任：(1) 针对您的应用选择合适的 TI 产品，(2) 设计、验
+证并测试您的应用，(3) 确保您的应用满足相应标准以及任何其他安全、安保或其他要求。这些资源如有变更，恕不另行通知。TI 授权您仅可
+将这些资源用于研发本资源所述的 TI 产品的应用。严禁对这些资源进行其他复制或展示。您无权使用任何其他 TI 知识产权或任何第三方知
+识产权。您应全额赔偿因在这些资源的使用中对 TI 及其代表造成的任何索赔、损害、成本、损失和债务，TI 对此概不负责。
+TI 提供的产品受 TI 的销售条款 (https:www.ti.com/legal/termsofsale.html) 或 ti.com 上其他适用条款/TI 产品随附的其他适用条款的约束。TI
+提供这些资源并不会扩展或以其他方式更改 TI 针对 TI 产品发布的适用的担保或担保免责声明。重要声明
+
+                      邮寄地址：Texas Instruments, Post Office Box 655303, Dallas, Texas 75265
+                                  Copyright © 2021，德州仪器 (TI) 公司
+                                                                                                                                                                     PACKAGE OPTION ADDENDUM
+
+       www.ti.com                                                                                                                                                                                                     7-Jul-2026
+
+
+
+
+PACKAGING INFORMATION
+
+       Orderable part number          Status     Material type      Package | Pins      Package qty | Carrier       RoHS             Lead finish/               MSL rating/          Op temp (°C)               Part marking
+                                        (1)            (2)                                                            (3)            Ball material              Peak reflow                                           (6)
+                                                                                                                                          (4)                       (5)
+
+           TMP1075DGKR                Active      Production       VSSOP (DGK) | 8       2500 | LARGE T&R            Yes             NIPDAU | SN        Level-2-260C-1 YEAR            -55 to 125                    1075
+                                                                                                                                     | NIPDAUAG                                                                      15C
+          TMP1075DGKR.A               Active      Production       VSSOP (DGK) | 8       2500 | LARGE T&R            Yes               NIPDAU           Level-2-260C-1 YEAR            -55 to 125                    1075
+                                                                                                                                                                                                                     15C
+           TMP1075DGKT               Obsolete     Production       VSSOP (DGK) | 8                 -                   -                Call TI                   Call TI              -55 to 125                    1075
+            TMP1075DR                 Active      Production            SOIC (D) | 8     2500 | LARGE T&R            Yes               NIPDAU            Level-1-260C-UNLIM            -55 to 125                    1075
+           TMP1075DR.A                Active      Production            SOIC (D) | 8     2500 | LARGE T&R            Yes               NIPDAU            Level-1-260C-UNLIM            -55 to 125                    1075
+           TMP1075DSGR                Active      Production       WSON (DSG) | 8        3000 | LARGE T&R            Yes               NIPDAU           Level-2-260C-1 YEAR            -55 to 125                    1AE
+          TMP1075DSGR.A               Active      Production       WSON (DSG) | 8        3000 | LARGE T&R            Yes               NIPDAU           Level-2-260C-1 YEAR            -55 to 125                    1AE
+         TMP1075DSGRG4                Active      Production       WSON (DSG) | 8        3000 | LARGE T&R            Yes               NIPDAU           Level-2-260C-1 YEAR            -55 to 125                    1AE
+        TMP1075DSGRG4.A               Active      Production       WSON (DSG) | 8        3000 | LARGE T&R            Yes               NIPDAU           Level-2-260C-1 YEAR            -55 to 125                    1AE
+           TMP1075DSGT               Obsolete     Production       WSON (DSG) | 8                  -                   -                Call TI                   Call TI              -55 to 125                    1AE
+          TMP1075NDRLR                Active      Production      SOT-5X3 (DRL) | 6      4000 | LARGE T&R            Yes               NIPDAU            Level-1-260C-UNLIM            -40 to 125                    N75
+         TMP1075NDRLR.A               Active      Production      SOT-5X3 (DRL) | 6      4000 | LARGE T&R            Yes               NIPDAU            Level-1-260C-UNLIM            -40 to 125                    N75
+         TMP1075NDRLR.B               Active      Production      SOT-5X3 (DRL) | 6      4000 | LARGE T&R            Yes               NIPDAU            Level-1-260C-UNLIM            -40 to 125                    N75
+
+(1)
+      Status: For more details on status, see our product life cycle.
+
+(2)
+   Material type: When designated, preproduction parts are prototypes/experimental devices, and are not yet approved or released for full production. Testing and final process, including without limitation quality assurance,
+reliability performance testing, and/or process qualification, may not yet be complete, and this item is subject to further changes or possible discontinuation. If available for ordering, purchases will be subject to an additional
+waiver at checkout, and are intended for early internal evaluation purposes only. These items are sold without warranties of any kind.
+
+(3)
+      RoHS values: Yes, No, RoHS Exempt. See the TI RoHS Statement for additional information and value definition.
+
+(4)
+   Lead finish/Ball material: Parts may have multiple material finish options. Finish options are separated by a vertical ruled line. Lead finish/Ball material values may wrap to two lines if the finish value exceeds the maximum
+column width.
+
+(5)
+  MSL rating/Peak reflow: The moisture sensitivity level ratings and peak solder (reflow) temperatures. In the event that a part has multiple moisture sensitivity ratings, only the lowest level per JEDEC standards is shown.
+Refer to the shipping label for the actual reflow temperature that will be used to mount the part to the printed circuit board.
+
+(6)
+      Part marking: There may be an additional marking, which relates to the logo, the lot trace code information, or the environmental category of the part.
+
+
+
+                                                                                                          Addendum-Page 1
+                                                                                                                                                                      PACKAGE OPTION ADDENDUM
+
+    www.ti.com                                                                                                                                                                                                      7-Jul-2026
+
+
+
+
+Multiple part markings will be inside parentheses. Only one part marking contained in parentheses and separated by a "~" will appear on a part. If a line is indented then it is a continuation of the previous line and the two
+combined represent the entire part marking for that device.
+
+Important Information and Disclaimer:The information provided on this page represents TI's knowledge and belief as of the date that it is provided. TI bases its knowledge and belief on information provided by third parties, and
+makes no representation or warranty as to the accuracy of such information. Efforts are underway to better integrate information from third parties. TI has taken and continues to take reasonable steps to provide representative
+and accurate information but may not have conducted destructive testing or chemical analysis on incoming materials and chemicals. TI and TI suppliers consider certain information to be proprietary, and thus CAS numbers
+and other limited information may not be available for release.
+
+In no event shall TI's liability arising out of such information exceed the total purchase price of the TI part(s) at issue in this document sold by TI to Customer on an annual basis.
+
+
+
+
+                                                                                                          Addendum-Page 2
+                                                                                PACKAGE MATERIALS INFORMATION
+
+www.ti.com                                                                                                                                          8-May-2026
+
+
+
+TAPE AND REEL INFORMATION
+
+       REEL DIMENSIONS                                                                       TAPE DIMENSIONS
+                                                                                        K0         P1
+
+
+
+                                                                                                                         B0 W
+                                          Reel
+                                        Diameter
+                                                                                     Cavity             A0
+                                                                 A0   Dimension designed to accommodate the component width
+                                                                 B0   Dimension designed to accommodate the component length
+                                                                 K0   Dimension designed to accommodate the component thickness
+                                                                 W    Overall width of the carrier tape
+                                                                 P1   Pitch between successive cavity centers
+
+
+                                         Reel Width (W1)
+                              QUADRANT ASSIGNMENTS FOR PIN 1 ORIENTATION IN TAPE
+
+                                                                                                        Sprocket Holes
+
+
+                                                   Q1       Q2          Q1    Q2
+
+                                                   Q3       Q4          Q3    Q4                    User Direction of Feed
+
+
+
+                                                             Pocket Quadrants
+
+
+*All dimensions are nominal
+             Device           Package Package Pins               SPQ       Reel   Reel   A0                    B0         K0     P1     W     Pin1
+                               Type Drawing                              Diameter Width (mm)                  (mm)       (mm)   (mm)   (mm) Quadrant
+                                                                           (mm) W1 (mm)
+     TMP1075DGKR              VSSOP       DGK           8        2500        330.0        12.4          5.3    3.4       1.4    8.0    12.0    Q1
+     TMP1075DGKR              VSSOP       DGK           8        2500        330.0        12.4          5.3    3.4       1.4    8.0    12.0    Q1
+     TMP1075DGKR              VSSOP       DGK           8        2500        330.0        12.4          5.3    3.4       1.4    8.0    12.0    Q1
+       TMP1075DR               SOIC         D           8        2500        330.0        12.4          6.4    5.2       2.1    8.0    12.0    Q1
+     TMP1075DSGR              WSON        DSG           8        3000        178.0           8.4        2.3    2.3       1.15   4.0    8.0     Q2
+    TMP1075DSGRG4             WSON        DSG           8        3000        180.0           8.4        2.3    2.3       1.15   4.0    8.0     Q2
+     TMP1075NDRLR             SOT-5X3     DRL           6        4000        180.0           8.4        2.0    1.8       0.75   4.0    8.0     Q3
+
+
+
+
+                                                                       Pack Materials-Page 1
+                                                                PACKAGE MATERIALS INFORMATION
+
+www.ti.com                                                                                                              8-May-2026
+
+
+
+ TAPE AND REEL BOX DIMENSIONS
+
+
+
+
+                                                               Width (mm)
+                                                                              H
+                      W
+
+
+
+
+                                                          L
+
+
+
+
+*All dimensions are nominal
+             Device           Package Type   Package Drawing   Pins         SPQ    Length (mm)   Width (mm)   Height (mm)
+      TMP1075DGKR               VSSOP             DGK           8           2500      356.0        356.0         36.0
+      TMP1075DGKR               VSSOP             DGK           8           2500      366.0        364.0         50.0
+      TMP1075DGKR               VSSOP             DGK           8           2500      353.0        353.0         32.0
+       TMP1075DR                 SOIC              D            8           2500      353.0        353.0         32.0
+      TMP1075DSGR                WSON             DSG           8           3000      208.0        191.0         35.0
+    TMP1075DSGRG4                WSON             DSG           8           3000      210.0        185.0         35.0
+     TMP1075NDRLR               SOT-5X3           DRL           6           4000      210.0        185.0         35.0
+
+
+
+
+                                                        Pack Materials-Page 2
+                                                                                                        PACKAGE OUTLINE
+DGK0008A                                                 SCALE 4.000
+                                                                                                VSSOP - 1.1 mm max height
+                                                                                                                 SMALL OUTLINE PACKAGE
+
+
+
+
+                                                                                                                   C
+                                          5.05
+                                               TYP
+          A                               4.75
+                                                                                                               0.1 C
+                                               PIN 1 INDEX AREA
+                                                                                                                                      SEATING
+                                                                                                                                      PLANE
+                                                                                         6X 0.65
+                                                                              8
+                1
+
+
+                                                                                            2X
+        3.1
+                                                                                           1.95
+        2.9
+       NOTE 3
+
+
+                4
+                                                                              5                 0.38
+                                                                                           8X
+                                                                                                0.25
+                                            3.1                                                  0.13   C A B
+                     B
+                                            2.9
+                                           NOTE 4
+
+
+
+
+                                                                                         0.23
+                                                                                         0.13
+
+
+
+
+                                          SEE DETAIL A
+                                                                                                   0.25
+                                                                                                   GAGE PLANE
+
+                                                                                                                                        1.1 MAX
+
+
+
+
+                                                                                                         0.7                              0.15
+                                                                                  0 -8                   0.4                              0.05
+                                                                                                                   DETAIL A
+                                                                                                                         A 20
+
+
+
+
+                                                                                                                       TYPICAL
+
+                                                                                                                                4214862/A 04/2023
+                                                                                                PowerPAD is a trademark of Texas Instruments.
+NOTES:
+
+1. All linear dimensions are in millimeters. Any dimensions in parenthesis are for reference only. Dimensioning and tolerancing
+   per ASME Y14.5M.
+2. This drawing is subject to change without notice.
+3. This dimension does not include mold flash, protrusions, or gate burrs. Mold flash, protrusions, or gate burrs shall not
+   exceed 0.15 mm per side.
+4. This dimension does not include interlead flash. Interlead flash shall not exceed 0.25 mm per side.
+5. Reference JEDEC registration MO-187.
+
+
+
+
+                                                                       www.ti.com
+                                                                                          EXAMPLE BOARD LAYOUT
+                                                                                             TM
+DGK0008A                                                                                          VSSOP - 1.1 mm max height
+                                                                                                                  SMALL OUTLINE PACKAGE
+
+
+
+
+                                                                            SYMM
+                                        8X (1.4)                                                                    (R0.05) TYP
+
+
+
+                    8X (0.45)    1                                                                          8
+
+
+
+                                                                                                                 SYMM
+
+
+
+                       6X (0.65)
+                                                                                                            5
+                                   4
+
+
+                                                                                                                SEE DETAILS
+
+                                                                            (4.4)
+
+                                                       LAND PATTERN EXAMPLE
+                                                          EXPOSED METAL SHOWN
+                                                               SCALE: 15X
+
+
+
+
+                   SOLDER MASK                                                      METAL UNDER                   SOLDER MASK
+                                                      METAL
+                       OPENING                                                      SOLDER MASK                   OPENING
+
+
+          EXPOSED METAL                                                                                                  EXPOSED METAL
+
+                                        0.05 MAX                                                        0.05 MIN
+                                        ALL AROUND                                                      ALL AROUND
+
+                                NON-SOLDER MASK                                                    SOLDER MASK
+                                    DEFINED                                                          DEFINED
+                                  (PREFERRED)
+                                                           SOLDER MASK DETAILS
+                                                                   15.000
+
+
+
+
+                                                                                                                            4214862/A 04/2023
+NOTES: (continued)
+
+ 6. Publication IPC-7351 may have alternate designs.
+ 7. Solder mask tolerances between and around signal pads can vary based on board fabrication site.
+ 8. Vias are optional depending on application, refer to device data sheet. If any vias are implemented, refer to their locations shown
+    on this view. It is recommended that vias under paste be filled, plugged or tented.
+ 9. Size of metal pad may vary due to creepage requirement.
+
+
+
+
+                                                                             www.ti.com
+                                                                              EXAMPLE STENCIL DESIGN
+                                                                                     TM
+DGK0008A                                                                                  VSSOP - 1.1 mm max height
+                                                                                                         SMALL OUTLINE PACKAGE
+
+
+
+
+                                                                SYMM
+
+                                        8X (1.4)                                                            (R0.05) TYP
+
+
+                     8X (0.45)      1                                                                8
+
+
+
+                                                                                                         SYMM
+
+
+
+                        6X (0.65)
+                                                                                                     5
+                                    4
+
+
+
+
+                                                                 (4.4)
+
+
+
+                                                   SOLDER PASTE EXAMPLE
+                                                              SCALE: 15X
+
+
+
+
+                                                                                                                  4214862/A 04/2023
+NOTES: (continued)
+
+11. Laser cutting apertures with trapezoidal walls and rounded corners may offer better paste release. IPC-7525 may have alternate
+    design recommendations.
+12. Board assembly site may have different recommendations for stencil design.
+
+
+
+
+                                                                 www.ti.com
+                                                                                                                PACKAGE OUTLINE
+ DRL0006A                                                          SCALE 8.000
+                                                                                                                SOT - 0.6 mm max height
+                                                                                                                        PLASTIC SMALL OUTLINE
+
+
+
+
+                                                   1.7
+                                                   1.5
+                                                         PIN 1                            A
+                                                         ID AREA
+
+
+                                 1
+                                                                                    6
+
+                        4X 0.5
+
+                                                                                         1.7
+                 2X 1
+                                                                                         1.5
+                                                                                        NOTE 3
+
+
+                                                                                    4                       2X 0 -10
+                                 3
+
+
+
+                                                   1.3                                       0.3                       0.05
+                                 B                                                      6X                                  TYP
+                                                   1.1                                       0.1                       0.00
+
+
+                                                                                   2X 4 -15
+
+
+
+                    0.6 MAX
+                                                                                                   C
+
+                                                                                                       SEATING PLANE
+                        0.18
+                   6X                                                                                  0.05 C
+                        0.08
+                                                 SYMM
+
+
+
+
+                        SYMM
+
+
+
+
+                                                                                                   0.27
+                                                                                              6X
+                                                                                                   0.15
+                                                                                                     0.1    C A B
+                                                          0.4
+                                                     6X                                              0.05    C
+                                                          0.2
+                                                                                                                                  4223266/F 11/2024
+
+NOTES:
+
+1. All linear dimensions are in millimeters. Any dimensions in parenthesis are for reference only. Dimensioning and tolerancing
+   per ASME Y14.5M.
+2. This drawing is subject to change without notice.
+3. This dimension does not include mold flash, protrusions, or gate burrs. Mold flash, protrusions, or gate burrs shall not
+   exceed 0.15 mm per side.
+4. Reference JEDEC registration MO-293 Variation UAAD
+
+
+
+
+                                                                                 www.ti.com
+                                                                                  EXAMPLE BOARD LAYOUT
+ DRL0006A                                                                                     SOT - 0.6 mm max height
+                                                                                                           PLASTIC SMALL OUTLINE
+
+
+
+
+                                                6X (0.67)
+                                                                  SYMM
+                                            1
+
+                                 6X (0.3)                                                     6
+
+
+
+                                                                                                  SYMM
+
+
+                               4X (0.5)
+
+                                                                                              4
+                                            3
+
+                           (R0.05) TYP
+                                                                  (1.48)
+
+
+
+                                                    LAND PATTERN EXAMPLE
+                                                               SCALE:30X
+
+
+
+
+                   0.05 MAX                                                0.05 MIN
+                   AROUND                                                  AROUND
+
+
+
+
+                 SOLDER MASK                        METAL                  METAL UNDER                     SOLDER MASK
+                 OPENING                                                   SOLDER MASK                     OPENING
+                                NON SOLDER MASK                                          SOLDER MASK
+                                    DEFINED                                                DEFINED
+                                  (PREFERRED)
+
+                                                       SOLDERMASK DETAILS
+
+
+
+
+                                                                                                                 4223266/F 11/2024
+
+NOTES: (continued)
+
+5. Publication IPC-7351 may have alternate designs.
+6. Solder mask tolerances between and around signal pads can vary based on board fabrication site.
+7. Land pattern design aligns to IPC-610, Bottom Termination Component (BTC) solder joint inspection criteria.
+
+
+
+
+                                                                  www.ti.com
+                                                                               EXAMPLE STENCIL DESIGN
+ DRL0006A                                                                                    SOT - 0.6 mm max height
+                                                                                                           PLASTIC SMALL OUTLINE
+
+
+
+
+                                                  6X (0.67)
+                                                                   SYMM
+                                              1
+
+                                   6X (0.3)                                                    6
+
+
+
+                                                                                                    SYMM
+
+
+                                 4X (0.5)
+
+                                                                                                4
+                                              3
+
+                            (R0.05) TYP
+                                                                   (1.48)
+
+
+                                                      SOLDER PASTE EXAMPLE
+                                                     BASED ON 0.1 mm THICK STENCIL
+                                                              SCALE:30X
+
+
+
+
+                                                                                                                   4223266/F 11/2024
+
+NOTES: (continued)
+
+8. Laser cutting apertures with trapezoidal walls and rounded corners may offer better paste release. IPC-7525 may have alternate
+   design recommendations.
+9. Board assembly site may have different recommendations for stencil design.
+
+
+
+
+                                                                  www.ti.com
+                                                                                                                  PACKAGE OUTLINE
+D0008A                                                           SCALE 2.800
+                                                                                                          SOIC - 1.75 mm max height
+                                                                                                              SMALL OUTLINE INTEGRATED CIRCUIT
+
+
+
+                                                                                                                                        C
+
+                                                                                                                     SEATING PLANE
+                                      .228-.244 TYP
+                                      [5.80-6.19]
+                                                                                                                             .004 [0.1] C
+         A                                    PIN 1 ID AREA
+                                                                                           6X .050
+                                                                                              [1.27]
+                                                                               8
+                   1
+
+
+
+
+     .189-.197                                                                              2X
+     [4.81-5.00]                                                                          .150
+       NOTE 3                                                                             [3.81]
+
+
+                                                                                                               4X (0 -15 )
+
+                   4
+                                                                               5
+                                                                                           8X .012-.020
+                       B                .150-.157                                             [0.31-0.51]
+                                                                                                                                    .069 MAX
+                                        [3.81-3.98]                                       .010 [0.25]     C A B                      [1.75]
+                                          NOTE 4
+
+
+
+
+                                                                                            .005-.010 TYP
+                                                                                            [0.13-0.25]
+
+
+                                        4X (0 -15 )
+
+                       SEE DETAIL A
+                                                                                     .010
+                                                                                     [0.25]
+
+
+
+
+                                                                                                                                        .004-.010
+                                                                                   0 -8                                                 [0.11-0.25]
+                                                                                          .016-.050
+                                                                                          [0.41-1.27]                        DETAIL A
+                                                                                                            (.041)           TYPICAL
+                                                                                                            [1.04]
+
+                                                                                                                                     4214825/C 02/2019
+
+NOTES:
+
+1. Linear dimensions are in inches [millimeters]. Dimensions in parenthesis are for reference only. Controlling dimensions are in inches.
+   Dimensioning and tolerancing per ASME Y14.5M.
+2. This drawing is subject to change without notice.
+3. This dimension does not include mold flash, protrusions, or gate burrs. Mold flash, protrusions, or gate burrs shall not
+   exceed .006 [0.15] per side.
+4. This dimension does not include interlead flash.
+5. Reference JEDEC registration MS-012, variation AA.
+
+
+
+
+                                                                        www.ti.com
+                                                                              EXAMPLE BOARD LAYOUT
+D0008A                                                                                  SOIC - 1.75 mm max height
+                                                                                           SMALL OUTLINE INTEGRATED CIRCUIT
+
+
+
+
+                                8X (.061 )
+                                    [1.55]
+                                                               SYMM                        SEE
+                                                                                           DETAILS
+                                             1
+                                                                                       8
+
+                             8X (.024)
+                                 [0.6]                                                      SYMM
+
+
+
+                                                                                             (R.002 ) TYP
+                                                                                               [0.05]
+                                                                                       5
+                                             4
+                         6X (.050 )
+                             [1.27]
+                                                               (.213)
+                                                                [5.4]
+
+                                                   LAND PATTERN EXAMPLE
+                                                     EXPOSED METAL SHOWN
+                                                           SCALE:8X
+
+
+
+
+                                                 SOLDER MASK            SOLDER MASK
+                     METAL                                                                                  METAL UNDER
+                                                 OPENING                    OPENING                         SOLDER MASK
+
+
+           EXPOSED
+             METAL                                                      EXPOSED
+                                                                          METAL
+                                      .0028 MAX                                              .0028 MIN
+                                      [0.07]                                                 [0.07]
+                                      ALL AROUND                                             ALL AROUND
+
+                           NON SOLDER MASK                                                 SOLDER MASK
+                               DEFINED                                                       DEFINED
+
+
+                                                      SOLDER MASK DETAILS
+
+
+
+
+                                                                                                               4214825/C 02/2019
+
+NOTES: (continued)
+
+6. Publication IPC-7351 may have alternate designs.
+7. Solder mask tolerances between and around signal pads can vary based on board fabrication site.
+
+
+
+
+                                                                www.ti.com
+                                                                              EXAMPLE STENCIL DESIGN
+D0008A                                                                                   SOIC - 1.75 mm max height
+                                                                                            SMALL OUTLINE INTEGRATED CIRCUIT
+
+
+
+
+                                   8X (.061 )
+                                       [1.55]                       SYMM
+
+                                                 1
+                                                                                             8
+
+                                 8X (.024)
+                                     [0.6]                                                       SYMM
+
+
+
+
+                                                                                                   (R.002 ) TYP
+                                                                                             5       [0.05]
+                                                 4
+                             6X (.050 )
+                                 [1.27]
+                                                                    (.213)
+                                                                     [5.4]
+
+
+                                                       SOLDER PASTE EXAMPLE
+                                                BASED ON .005 INCH [0.125 MM] THICK STENCIL
+                                                                 SCALE:8X
+
+
+
+
+                                                                                                                  4214825/C 02/2019
+
+NOTES: (continued)
+
+8. Laser cutting apertures with trapezoidal walls and rounded corners may offer better paste release. IPC-7525 may have alternate
+   design recommendations.
+9. Board assembly site may have different recommendations for stencil design.
+
+
+
+
+                                                                 www.ti.com
+                                                                  GENERIC PACKAGE VIEW
+DSG 8                                                                   WSON - 0.8 mm max height
+2 x 2, 0.5 mm pitch                                                         PLASTIC SMALL OUTLINE - NO LEAD
+
+
+
+
+               This image is a representation of the package family, actual package may vary.
+                             Refer to the product data sheet for package details.
+
+
+
+
+                                                                                                   4224783/A
+
+
+
+
+                                                    www.ti.com
+                                                                                                            PACKAGE OUTLINE
+DSG0008A                                                          SCALE 5.500
+                                                                                                        WSON - 0.8 mm max height
+                                                                                                            PLASTIC SMALL OUTLINE - NO LEAD
+
+
+
+
+                                                      2.1                           B
+                                  A
+                                                      1.9
+
+
+
+
+                                                                                                            0.32
+                PIN 1 INDEX AREA                                                                            0.18
+                                                                                    2.1
+                                                                                    1.9
+
+                                                                                                                             0.4
+                                                                                                                             0.2
+
+                                                                                                       ALTERNATIVE TERMINAL SHAPE
+                                                                                                                   TYPICAL
+
+
+
+
+                           0.8                                                                 C
+                           0.7
+
+                                                                                                   SEATING PLANE
+                           0.05                                                                                          SIDE WALL
+                                                                                                   0.08 C
+                           0.00                                                                                      METAL THICKNESS
+                                                                                                                            DIM A
+                                                                                                                    OPTION 1     OPTION 2
+                                                                                                                      0.1          0.2
+
+                          EXPOSED
+                       THERMAL PAD                  0.9 0.1                                                                  (DIM A) TYP
+
+
+                                        4                                       5
+
+                               6X 0.5
+
+                         2X
+                                                         9
+                         1.5                                                         1.6 0.1
+
+
+
+
+                                                                                8
+                                        1
+
+                               PIN 1 ID                                                        0.32
+                                                                                          8X
+                            (45 X 0.25)                    0.4                                 0.18
+                                                        8X
+                                                           0.2                                  0.1    C A B
+                                                                                                0.05    C
+
+
+                                                                                                                             4218900/E 08/2022
+
+NOTES:
+
+1. All linear dimensions are in millimeters. Any dimensions in parenthesis are for reference only. Dimensioning and tolerancing
+   per ASME Y14.5M.
+2. This drawing is subject to change without notice.
+3. The package thermal pad must be soldered to the printed circuit board for thermal and mechanical performance.
+
+
+
+
+                                                                  www.ti.com
+                                                                                       EXAMPLE BOARD LAYOUT
+DSG0008A                                                                                         WSON - 0.8 mm max height
+                                                                                                          PLASTIC SMALL OUTLINE - NO LEAD
+
+
+
+
+                                                                     (0.9)            ( 0.2) VIA
+                                       8X (0.5)
+                                                                                      TYP
+                                                  1
+                                                                                            8
+
+
+                                   8X (0.25)
+                                                                                                (0.55)
+                                         SYMM                           9
+                                                                                                         (1.6)
+
+
+                                       6X (0.5)
+                                                                                            5
+                                                  4
+
+                                 (R0.05) TYP                        SYMM
+
+                                                                     (1.9)
+
+                                                      LAND PATTERN EXAMPLE
+                                                                  SCALE:20X
+
+
+
+
+                                               0.07 MAX                                                    0.07 MIN
+                                               ALL AROUND                                                  ALL AROUND
+
+
+
+
+                    SOLDER MASK                       METAL                    METAL UNDER                        SOLDER MASK
+                    OPENING                                                    SOLDER MASK                        OPENING
+                                    NON SOLDER MASK
+                                                                                                   SOLDER MASK
+                                        DEFINED
+                                                                                                     DEFINED
+                                      (PREFERRED)
+
+                                                             SOLDER MASK DETAILS
+
+
+
+                                                                                                                            4218900/E 08/2022
+
+NOTES: (continued)
+
+4. This package is designed to be soldered to a thermal pad on the board. For more information, see Texas Instruments literature
+   number SLUA271 (www.ti.com/lit/slua271).
+5. Vias are optional depending on application, refer to device data sheet. If any vias are implemented, refer to their locations shown
+   on this view. It is recommended that vias under paste be filled, plugged or tented.
+
+
+
+
+                                                                       www.ti.com
+                                                                               EXAMPLE STENCIL DESIGN
+DSG0008A                                                                                 WSON - 0.8 mm max height
+                                                                                                PLASTIC SMALL OUTLINE - NO LEAD
+
+
+
+
+                                  8X (0.5)                       SYMM               METAL
+                                             1
+                                                                                            8
+
+                             8X (0.25)
+                                                                                                (0.45)
+                                  SYMM
+                                                                      9
+
+
+
+                                  6X (0.5)                                                           (0.7)
+
+                                                                                            5
+                                             4
+
+                            (R0.05) TYP                           (0.9)
+
+                                                                  (1.9)
+
+
+                                                    SOLDER PASTE EXAMPLE
+                                                  BASED ON 0.125 mm THICK STENCIL
+
+                                                       EXPOSED PAD 9:
+                                     87% PRINTED SOLDER COVERAGE BY AREA UNDER PACKAGE
+                                                          SCALE:25X
+
+
+
+
+                                                                                                                  4218900/E 08/2022
+
+NOTES: (continued)
+
+6. Laser cutting apertures with trapezoidal walls and rounded corners may offer better paste release. IPC-7525 may have alternate
+   design recommendations.
+
+
+
+
+                                                                 www.ti.com
+                              重要通知和免责声明
+TI“按原样”提供技术和可靠性数据（包括数据表）、设计资源（包括参考设计）、应用或其他设计建议、网络工具、安全信息和其他资源，不
+保证没有瑕疵且不做出任何明示或暗示的担保，包括但不限于对适销性、与某特定用途的适用性或不侵犯任何第三方知识产权的暗示担保。
+这些资源可供使用 TI 产品进行设计的熟练开发人员使用。您将自行承担以下全部责任：(1) 针对您的应用选择合适的 TI 产品，(2) 设计、验
+证并测试您的应用，(3) 确保您的应用满足相应标准以及任何其他安全、安保法规或其他要求。
+这些资源如有变更，恕不另行通知。TI 授权您仅可将这些资源用于研发本资源所述的 TI 产品的相关应用。严禁以其他方式对这些资源进行复
+制或展示。您无权使用任何其他 TI 知识产权或任何第三方知识产权。对于因您对这些资源的使用而对 TI 及其代表造成的任何索赔、损害、
+成本、损失和债务，您将全额赔偿，TI 对此概不负责。
+TI 提供的产品受 TI 销售条款)、TI 通用质量指南 或 ti.com 上其他适用条款或 TI 产品随附的其他适用条款的约束。TI 提供这些资源并不会扩
+展或以其他方式更改 TI 针对 TI 产品发布的适用的担保或担保免责声明。 除非德州仪器 (TI) 明确将某产品指定为定制产品或客户特定产品，
+否则其产品均为按确定价格收入目录的标准通用器件。
+TI 反对并拒绝您可能提出的任何其他或不同的条款。
+IMPORTANT NOTICE
+
+                            版权所有 © 2026，德州仪器 (TI) 公司
+                              最后更新日期：2025 年 10 月
+

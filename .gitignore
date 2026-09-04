@@ -10,3 +10,6 @@ glove_daq_rv
 *.csv
 *.log
 seg_*/
+
+# STM32 CubeIDE 编译产物
+STM32/G474CBT6/Debug/
