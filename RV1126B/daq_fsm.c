@@ -140,7 +140,8 @@ int fsm_run(const fsm_cfg_t *cfg)
 				role = 1; hands = 0; go = 1;
 			}
 			if (go) {
-				printf("[fsm] 0xC301 开采请求: 角色=%s 模式=%s → 启动相机\n",
+				printf("[fsm] 0xC301 开采请求: 角色=%s 模式=%s → 启动相机"
+				       "(cam0=主机, 起振即向全系统发 XVS+XHS)\n",
 				       role == 1 ? "主机" : "从机", hands == 1 ? "双手" : "单手");
 				if (!cfg->no_cam) {
 					if (cam_start(&cfg->cam) != 0) {
@@ -158,7 +159,8 @@ int fsm_run(const fsm_cfg_t *cfg)
 				glove_queue_pkt(GLV_PKT_START, NULL);  /* 0xC101 = 相机就绪回执 */
 				t_frame0 = now_ms();
 				st = ST_WAIT_FRAME;
-				printf("[fsm] 已回 0xC101, 等第一个数据帧(主机放号后出现)…\n");
+				printf("[fsm] 已回 0xC101, 等第一个数据帧"
+				       "(cam0 的 XVS 已起振, STM32 捕获到即逐拍装帧)…\n");
 			} else {
 				usleep(100 * 1000);
 			}
