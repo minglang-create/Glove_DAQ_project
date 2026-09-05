@@ -1,43 +1,110 @@
-# 开机自启机制 & 干净方案(2026-09-03)
+# 开机自启机制 & 固化进固件(2026-09-05 定稿)
 
-## 真实机制(2026-09-03 实测厘清; ★此板是 systemd, 不是 busybox init★)
+目标:**烧录固件后上电即可用** —— 无需任何手动配置,开机自动加载内核模块、
+自动启动 `glove_daq_rv`,工人按一下按键就能采集。
+
+---
+
+## 一、启动链(实测厘清:此板是 systemd,不是 busybox init)
+
 ```
-systemd(/sbin/init→systemd) → initd-seq.service (multi-user.target.wants, 已 enabled)
-  → /usr/bin/run_initd.sh start
-     → 顺序 . 执行 /etc/init.d/S??*   ★只扫这一个目录★
-        ├─ S21appinit  ★选择器★  读 /etc/.rkapp → sh /oem/usr/bin/RkLunch-<内容>.sh
-        │                        (.rkapp 缺失/空 → 默认 RKIPC_RV1126B)
-        └─ S89insmod_ko.sh  我们的: 只 insmod, 不启应用
+systemd(/sbin/init→systemd)
+  └─ initd-seq.service (multi-user.target.wants, 已 enabled)
+      └─ /usr/bin/run_initd.sh start
+          └─ 顺序执行 /etc/init.d/S??*      ★只扫这一个目录★
+              └─ S21appinit  读 /etc/.rkapp = "GLOVEDAQ"
+                  └─ sh /oem/usr/bin/RkLunch-GLOVEDAQ.sh
+                      ├─ insmod_ko.sh + clr_unready_dev   (模块与 sensor 解锁)
+                      ├─ 逃生口检查 /userdata/glove_noauto
+                      └─ 循环启动 glove_daq_rv(退出后自动重起)
 ```
-★重要纠正: `/oem/usr/etc/init.d/` 没有任何东西扫描它 —— common.mk 注释里"S99 会被
-  RkLunch 执行"是错的(基于 busybox init 的假设)。之前 dualrtsp 自启靠的是 .rkapp
-  选择器那条路, 不是 oem 下的 S99 点火器。**自启脚本必须放 /etc/init.d/(rootfs, 可写,
-  掉电保留), 不是 /oem/usr/etc/init.d/。**
-- `/etc/.rkapp` 与 `/etc/init.d/` 都在 **rootfs 分区**(烧 oem.img 改不到, 运行时改, 掉电保留;
-  ★但重烧 rootfs.img 会覆盖★ → 量产要把 S89 纳入 rootfs 打包, 见下)。
 
-## 踩过的坑: 两套自启并行, 互相不知道
-旧方案既改 .rkapp(选择器路径), 又放 S99dualrtsp.sh 点火器(自己拉 dual_cam),
-两套叠加 → "说不清谁启动了谁", 还和联调手动跑冲突。已拆除。
+**两处纠正过的误解**:
+1. `/oem/usr/etc/init.d/` **没有任何东西扫描它** —— common.mk 注释里"S99 会被
+   RkLunch 执行"是错的(基于 busybox init 的假设)。自启脚本只有放 `/etc/init.d/` 才有效。
+2. 光 insmod 还不够,**必须写 `clr_unready_dev`**,否则 rkaiq 枚举不到 sensor
+   (取代 rkipc 后没人替我们做这件事)。两步都在 RkLunch-GLOVEDAQ.sh 里。
 
-## 当前干净方案(联调阶段)
-目标: **开机只铺地基(insmod 内核模块), 不自启任何应用**; 应用由人手动跑。
-1. `/etc/init.d/S89insmod_ko.sh` —— 只调 insmod_ko.sh 加载 /dev/mpi 与 sensor .ko,
-   不启动任何应用(编号 89 < 99, 先于任何应用)。逃生: touch /userdata/no_insmod。
-2. `/etc/.rkapp = MANUAL` —— 哨兵值, 对应 RkLunch-MANUAL.sh 不存在 → S21 静默跳过,
-   不启 rkipc 也不启我们的应用。(换句话说: 应用零自启)
-3. 删掉旧的 /oem/usr/etc/init.d/S99dualrtsp.sh(本就没被执行); 不再需要 cam_daq_noauto 标记。
+---
 
-## ★量产注意★ S89 在 rootfs, 重烧 rootfs.img 会丢
-联调期手动 adb push 到 /etc/init.d/ 即可(掉电保留)。要固化进固件, 需把 S89insmod_ko.sh
-放进 rootfs overlay(SDK 的 project/../rootfs 覆盖层), 而非 oem 打包 —— 具体路径待查
-SDK 的 rootfs 定制机制(通常在 sysdrv/rootfs 或 device/.../rootfs_overlay)。
+## 二、怎么固化进固件(官方 overlay 机制)
 
-结果: 每次上电 → /dev/mpi 自动就绪 → 直接手动 `glove_daq_rv ...` 即可, 不用再手敲 insmod。
+`/etc` 在 **rootfs 分区**,手动放的文件**一重烧固件就没了**(踩过:重烧后 `.rkapp`
+被重置回 `DUALRTSP`,自启的 dual_cam 抢占相机,导致 glove_daq_rv 卡在 rkaiq 初始化)。
 
-## 将来量产要"开机自动跑 glove_daq_rv"时怎么做
-两条路二选一(别再两套并行):
-- (推荐)写 /oem/usr/bin/RkLunch-GLOVEDAQ.sh(解锁+起 glove_daq_rv), echo GLOVEDAQ > /etc/.rkapp。
-  S89 仍负责 insmod。逃生口在 RkLunch 脚本头部判 /userdata/xxx_noauto。
-- 或直接在 S89 之后加一个 S95glovedaq.sh 点火器。
-只保留其中一条, 并在本文件记录, 避免重蹈"两套并行"的覆辙。
+官方做法(来源:Luckfox wiki《SDK 镜像编译》+ `build.sh:3023 post_overlay`):
+
+```bash
+# build_firmware() 会执行:
+rsync $(dirname .BoardConfig.mk)/overlay/$RK_POST_OVERLAY/*  →  rootfs 暂存目录
+```
+
+本仓已备好,一条命令装进 SDK:
+
+```bash
+cd RV1126B/board_rootfs_overlay && sh install_to_sdk.sh
+# 它做两件事: ①拷 etc/.rkapp(内容 GLOVEDAQ)到 SDK 的 overlay/overlay-glove-daq/
+#            ②在 .BoardConfig.mk 里设 export RK_POST_OVERLAY="overlay-glove-daq"
+```
+
+`RkLunch-GLOVEDAQ.sh` 和 `glove_daq_rv` 在 **OEM 分区**,由 app 的 Makefile 自动打包,
+不需要 overlay。
+
+---
+
+## 三、完整出固件流程(★含一个 SDK 的坑★)
+
+```bash
+# 1) 编译应用(sudo: 打包目录属 root)
+cd ~/Aura-sdk/project/app/Glove_DAQ_RV1126B_SDK/RV1126B && sudo make
+
+# 2) ★必做:把产物同步到 app_out★
+sudo cp -rfa ~/Aura-sdk/project/app/out/* ~/Aura-sdk/output/out/app_out/
+
+# 3) 打包固件(overlay 在这一步被 rsync 进 rootfs)
+cd ~/Aura-sdk && sudo ./build.sh firmware
+# 内核有改动才需要: sudo ./build.sh kernel  (在 firmware 之前)
+```
+
+**第 2 步为什么必须手动做**:`__PACKAGE_RESOURCES` 从 `output/out/app_out/bin` 读文件,
+而 app 的 Makefile 写的是 `project/app/out/bin`。本该衔接两者的
+`$(call MAROC_COPY_PKG_TO_APP_OUTPUT, ...)`(`project/app/Makefile:23`)所调用的宏
+**在整个 SDK 里没有定义**(`MAROC` 疑似 `MACRO` 拼错),`$(call)` 展开为空 → 断链。
+漏了这步的症状:固件里是**上一次的旧程序**,新加的脚本根本不进去。
+
+### 出完固件必须核对(别只信编译日志)
+
+```bash
+cat  ~/Aura-sdk/output/out/rootfs_glibc_rv1126b/etc/.rkapp          # 应为 GLOVEDAQ
+ls -l ~/Aura-sdk/output/out/oem/usr/bin/{glove_daq_rv,RkLunch-GLOVEDAQ.sh}  # 大小/时间应是刚编的
+ls -l ~/Aura-sdk/output/image/{rootfs.img,oem.img,update.img}       # 时间戳应是刚才
+```
+
+---
+
+## 四、工人使用 & 调试逃生口
+
+**工人**:上电 → 程序自动跑起来 → 按一下按键开始采集 → 长按 2 秒结束 →
+程序退出后脚本自动重起它 → 可直接开始下一次采集。日志 `/userdata/glove_daq.log`。
+
+**调试**(不想让它自启抢相机):
+
+```bash
+adb shell "touch /userdata/glove_noauto && reboot"   # 只加载模块, 不起程序
+adb shell "rm /userdata/glove_noauto && reboot"      # 恢复自启
+# 临时停一次(不重启):
+adb shell "pkill -f RkLunch-GLOVEDAQ; killall -9 glove_daq_rv"
+#   ★注意★ RkLunch 里是无限重起循环, 只 kill 程序会被自动拉起, 必须连脚本一起 kill
+```
+
+---
+
+## 五、历史包袱(已清理)
+
+- **S89insmod_ko.sh 已删除**:它的 insmod 职责并入 RkLunch-GLOVEDAQ.sh,
+  且它被打包到无人扫描的 `/oem/usr/etc/init.d/`,留着只会造成"两套并行"的混乱
+  (这正是之前 `.rkapp` 选择器 + S99 点火器并存时踩过的坑)。
+- `/oem/usr/etc/init.d/S99dualrtsp.sh` 来自 cam_daq/dual_cam 的打包,落在无人扫描的
+  目录里无害,不属于本仓库,不动它。
+- `.rkapp` 哨兵值 `MANUAL`(对应 RkLunch 脚本不存在 → S21 静默跳过、什么都不启)
+  仍可用于临时全禁自启,但现在有 `/userdata/glove_noauto` 更合适(模块照常加载)。

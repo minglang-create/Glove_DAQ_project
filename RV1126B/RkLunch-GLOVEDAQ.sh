@@ -1,0 +1,72 @@
+#!/bin/sh
+# =============================================================================
+# RkLunch-GLOVEDAQ.sh —— 上电自启:手套数据采集(glove_daq_rv)
+#
+# 【怎么被调用】开机 systemd → initd-seq.service → /usr/bin/run_initd.sh
+#   → /etc/init.d/S21appinit 读 /etc/.rkapp:
+#      内容 = "GLOVEDAQ" → 执行本脚本;官方 rkipc 从此【根本不启动】(不抢相机)。
+#   /etc/.rkapp 的内容由 SDK overlay 固化进 rootfs.img(见 board_rootfs_overlay/),
+#   所以【重烧固件后依然生效】,不需要手动 echo。
+#
+# 【为什么要自己 insmod + 解锁】取代 rkipc 后没人替我们跑 insmod_ko.sh,
+#   /dev/mpi 不存在 → rockit 起不来;且 clr_unready_dev 不写 → rkaiq 枚举不到
+#   sensor(踩过坑, 见 dual_cam/RkLunch-DUALRTSP.sh 同款处理)。两步都必须做。
+#
+# 【★不碰 USB gadget★】只起采集程序,不建 functionfs gadget → adb 全程常在,
+#   永不自锁。自启方案一律不动 gadget(定规, 见 PROJECT_STATE §8)。
+#
+# 【工人使用】上电 → 本脚本把程序跑起来 → 按一下按键开始采集 →
+#   长按 2 秒结束 → 程序退出 → 本脚本自动重起它 → 可直接开始下一次采集。
+#
+# 日志: /userdata/glove_daq.log
+# 逃生口(调试用): touch /userdata/glove_noauto && reboot
+#   → 只加载内核模块、不起采集程序,留干净环境给手动跑 glove_daq_rv
+# =============================================================================
+LOG=/userdata/glove_daq.log
+APP=/oem/usr/bin/glove_daq_rv
+
+# 耗时活丢后台:S21appinit 在开机序列里,阻塞会拖慢启动
+(
+	# 1) 等 userdata 挂好(日志和落盘都在这里)
+	cnt=0
+	while [ $cnt -lt 50 ]; do
+		mount | grep -qw userdata && break
+		cnt=$((cnt + 1)); sleep 0.1
+	done
+
+	echo "==== RkLunch-GLOVEDAQ 自启 $(date) ====" > $LOG
+
+	# 2) 加载内核模块(/dev/mpi 等) + 解锁 sensor 枚举
+	[ -f /oem/usr/ko/insmod_ko.sh ] && ( cd /oem/usr/ko && sh insmod_ko.sh ) >> $LOG 2>&1
+	echo 1 > /sys/module/video_rkcif/parameters/clr_unready_dev 2>/dev/null
+	echo 1 > /sys/module/video_rkisp/parameters/clr_unready_dev 2>/dev/null
+	if [ -e /dev/mpi/vsys ]; then
+		echo "[glovedaq] 模块就绪 /dev/mpi ✓ uptime=$(cut -d. -f1 /proc/uptime)s" >> $LOG
+	else
+		echo "[glovedaq] ★/dev/mpi 缺失, 相机会起不来★" >> $LOG
+	fi
+
+	# 3) 逃生口:调试时不自启程序, 但模块已加载好(手动跑 glove_daq_rv 即可)
+	if [ -f /userdata/glove_noauto ]; then
+		echo "[glovedaq] glove_noauto 标志存在, 跳过自启(手动模式)" >> $LOG
+		exit 0
+	fi
+
+	[ -x $APP ] || { echo "[glovedaq] ★$APP 不存在或不可执行★" >> $LOG; exit 1; }
+
+	# 4) 起采集程序。长按结束后自动重起 → 工人可连续做多次采集。
+	#    异常快退(<5s)时退避到 10s, 防止崩溃循环把日志刷爆。
+	while true; do
+		t0=$(cut -d. -f1 /proc/uptime)
+		echo "[glovedaq] 启动 $APP (uptime ${t0}s)" >> $LOG
+		$APP >> $LOG 2>&1
+		rc=$?
+		t1=$(cut -d. -f1 /proc/uptime)
+		echo "[glovedaq] 退出(exit=$rc, 运行 $((t1 - t0))s)" >> $LOG
+		if [ $((t1 - t0)) -lt 5 ]; then
+			echo "[glovedaq] 快速退出, 退避 10s" >> $LOG; sleep 10
+		else
+			sleep 3
+		fi
+	done
+) &

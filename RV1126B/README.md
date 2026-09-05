@@ -30,7 +30,9 @@ adb shell /oem/usr/bin/glove_daq_rv          # 正式流程(按键触发)
 | `-o <dir>` | 落盘基目录(默认 `/userdata/daq`) |
 | `-G c:l` / `-K c:l` | PA1 / 按键 GPIO(默认 `0:4` / `0:0`) |
 
-⚠ 每次上电需先有 `/dev/mpi`(rockit 内核模块)。已做成开机自启,见 [AUTOSTART.md](AUTOSTART.md)。
+⚠ 烧录固件后**上电即用**:开机自动加载模块 + 自动启动 `glove_daq_rv`,按键即可采集。
+机制与出固件流程(含一个必踩的 SDK 坑)见 [AUTOSTART.md](AUTOSTART.md)。
+调试时不想让它自启:`touch /userdata/glove_noauto && reboot`。
 
 ## 目录结构
 
@@ -43,9 +45,12 @@ align.{c,h}         相机帧 ↔ CYCLE 自动标定(PA1 沿内核时间戳锚�
 recorder.{c,h}      分段落盘 seg_<n>_<boottime>/{cam0/1.h265, pairs.csv, glove.bin/csv}
 glove_view.{c,h}    终端可视化
 button.{c,h}        按键(GPIO0_A0 低有效, 30ms 去抖, 2s 长按)
-S89insmod_ko.sh     开机自启: 只加载内核模块(部署到板上 /etc/init.d/)
+RkLunch-GLOVEDAQ.sh 开机自启入口(打包进 /oem/usr/bin/): 加载模块+解锁 sensor+
+                    循环起 glove_daq_rv; 逃生口 /userdata/glove_noauto
 selfcheck_*.sh      千兆以太网 / SD3.0 板级自检
 docs/               协议契约
+board_rootfs_overlay/ rootfs 固化(etc/.rkapp=GLOVEDAQ)+ install_to_sdk.sh
+                    → 让自启配置【重烧固件后依然生效】, 见 AUTOSTART.md
 board_kernel_mods/  内核改动快照(镜像 SDK 真实路径)+ sync/restore 脚本
   arch/arm64/boot/dts/rockchip/   设备树: 主 dts + 6 个 dtsi
   arch/arm64/configs/             defconfig(含 REALTEK_PHY 等)
