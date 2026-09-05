@@ -11,7 +11,10 @@
  *   -S <hz>      SPI 速率          默认 5000000
  *   -G <c:l>     PA1(DATA_READY)   默认 0:4  (球K13=GPIO0_A4)
  *   -K <c:l>     按键 GPIO(低有效)  默认 0:0(SW3=球A2=GPIO0_A0); -1:-1=禁用
- *   -o <dir>     落盘基目录        默认 /userdata/daq ("none"=不落盘)
+ *   -o <dir>     落盘基目录        默认 /mnt/sd/daq ("none"=不落盘)
+ *   -F <sec>     周期 fsync 间隔    默认 5 (0=关; exFAT 不 fsync 拔卡会丢文件大小)
+ *   -T <min>     按时间自动切段     默认 10 (0=关; 损伤隔离+可边录边拉)
+ *   -M <gb>      SD 剩余空间阈值    默认 2.0 (0=不检查存储, 允许落 eMMC 调试)
  *   -w <view>    视图 hdr/imu/joint/tactile/all(默认 hdr)   -r <hz> 重绘率
  *   -V           STM32 假数据逐帧验收
  *   -A           台架直通(STM32 AUTOSTART=1 时: 见数据帧即启相机开跑)
@@ -45,7 +48,7 @@ static void on_btn(int lp, void *u) { (void)u; fsm_request_button(lp); }
 
 int main(int argc, char *argv[])
 {
-	const char *spidev = "/dev/spidev0.0", *rec_dir = "/userdata/daq";
+	const char *spidev = "/dev/spidev0.0", *rec_dir = "/mnt/sd/daq";
 	const char *view = "hdr";
 	uint32_t hz = 5000000;
 	/* 按键 = SW3 → SoM 球 A2 = 芯片 GPIO0_A0(_Z 无默认拉, 代码里开内部上拉;
@@ -53,10 +56,11 @@ int main(int argc, char *argv[])
 	int pa1_c = 0, pa1_l = 4, btn_c = 0, btn_l = 0, vhz = 15;
 	fsm_cfg_t cfg;
 	memset(&cfg, 0, sizeof(cfg));
+	cfg.rec.fsync_sec = 5; cfg.rec.rotate_min = 10; cfg.rec.min_free_gb = 2.0;   /* SD 落盘默认 */
 	g_argv = argv;
 
 	int ch, a, b;
-	while ((ch = getopt(argc, argv, "D:S:G:K:o:w:r:W:H:b:VAXh")) != -1) {
+	while ((ch = getopt(argc, argv, "D:S:G:K:o:w:r:W:H:b:F:T:M:VAXh")) != -1) {
 		switch (ch) {
 		case 'D': spidev = optarg; break;
 		case 'S': hz = (uint32_t)strtoul(optarg, NULL, 0); break;
@@ -68,6 +72,9 @@ int main(int argc, char *argv[])
 		case 'W': cfg.cam.width = atoi(optarg); break;
 		case 'H': cfg.cam.height = atoi(optarg); break;
 		case 'b': cfg.cam.bitrate_kbps = atoi(optarg); break;
+		case 'F': cfg.rec.fsync_sec = atoi(optarg); break;
+		case 'T': cfg.rec.rotate_min = atoi(optarg); break;
+		case 'M': cfg.rec.min_free_gb = atof(optarg); break;
 		case 'V': cfg.verify_fake = 1; break;
 		case 'A': cfg.auto_mode = 1; break;
 		case 'X': cfg.no_cam = 1; break;

@@ -15,7 +15,8 @@ systemd(/sbin/init→systemd)
               └─ S21appinit  读 /etc/.rkapp = "GLOVEDAQ"
                   └─ sh /oem/usr/bin/RkLunch-GLOVEDAQ.sh
                       ├─ insmod_ko.sh + clr_unready_dev   (模块与 sensor 解锁)
-                      ├─ 逃生口检查 /userdata/glove_noauto
+                      ├─ mount -o noatime /dev/mmcblk1p1 /mnt/sd  (SD 卡 = 落盘目标, exFAT)
+                      ├─ 逃生口检查 /userdata/glove_noauto  (noauto 时上面两步照做)
                       └─ 循环启动 glove_daq_rv(退出后自动重起)
 ```
 
@@ -84,8 +85,11 @@ ls -l ~/Aura-sdk/output/image/{rootfs.img,oem.img,update.img}       # 时间戳�
 
 ## 四、工人使用 & 调试逃生口
 
-**工人**:上电 → 程序自动跑起来 → 按一下按键开始采集 → 长按 2 秒结束 →
+**工人**:插好 SD 卡 → 上电 → 程序自动跑起来 → 按一下按键开始采集 → 长按 2 秒结束 →
 程序退出后脚本自动重起它 → 可直接开始下一次采集。日志 `/userdata/glove_daq.log`。
+**SD 卡不在或剩余 <2GB = 自检失败**:程序不发 0x5501(STM32 LED 不亮),拒绝开始采集;
+插好卡后每秒复检、自动恢复。**拔卡前先长按结束**(段收口时 fsync;运行中每 5 秒也 fsync,
+最坏丢 5 秒)。数据在 `/mnt/sd/daq/seg_*/`,每 10 分钟自动切一段,已完成的段可边录边 adb pull。
 
 **调试**(不想让它自启抢相机):
 

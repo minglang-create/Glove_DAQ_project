@@ -36,8 +36,8 @@ APP=/oem/usr/bin/glove_daq_rv
 
 	echo "==== RkLunch-GLOVEDAQ 自启 $(date) ====" > $LOG
 
-	# 2) 加载内核模块(/dev/mpi 等) + 解锁 sensor 枚举
-	[ -f /oem/usr/ko/insmod_ko.sh ] && ( cd /oem/usr/ko && sh insmod_ko.sh ) >> $LOG 2>&1
+	# 2) 加载内核模块(/dev/mpi 等) + 解锁 sensor 枚举(滤掉 insmod_ko 探 WiFi 的 sdio 噪音)
+	[ -f /oem/usr/ko/insmod_ko.sh ] && ( cd /oem/usr/ko && sh insmod_ko.sh 2>&1 | grep -v sdio ) >> $LOG
 	echo 1 > /sys/module/video_rkcif/parameters/clr_unready_dev 2>/dev/null
 	echo 1 > /sys/module/video_rkisp/parameters/clr_unready_dev 2>/dev/null
 	if [ -e /dev/mpi/vsys ]; then
@@ -46,7 +46,23 @@ APP=/oem/usr/bin/glove_daq_rv
 		echo "[glovedaq] ★/dev/mpi 缺失, 相机会起不来★" >> $LOG
 	fi
 
-	# 3) 逃生口:调试时不自启程序, 但模块已加载好(手动跑 glove_daq_rv 即可)
+	# 2.5) 挂 SD 卡到固定点 /mnt/sd(落盘目标, exFAT 内核内建)。卡不在时这里不报错——
+	#      由 glove_daq_rv 的存储自检判定并拒绝采集(不发 0x5501 → STM32 LED 不亮 → 工人可见)。
+	#      noatime: 少写元数据。不用 -o sync: 那会把 SD 卡的每次抖动直接暴露给应用。
+	mkdir -p /mnt/sd
+	if ! mount | grep -q ' /mnt/sd '; then
+		if [ -b /dev/mmcblk1p1 ]; then
+			if mount -o noatime /dev/mmcblk1p1 /mnt/sd >> $LOG 2>&1; then
+				echo "[glovedaq] SD 已挂 /mnt/sd, 可用 $(df -h /mnt/sd | awk 'NR==2{print $4}')" >> $LOG
+			else
+				echo "[glovedaq] ★SD 挂载失败(文件系统损坏? 需 PC 上检查)★" >> $LOG
+			fi
+		else
+			echo "[glovedaq] ★未检测到 SD 卡(/dev/mmcblk1p1)★ 采集程序自检将拒绝采集" >> $LOG
+		fi
+	fi
+
+	# 3) 逃生口:调试时不自启程序, 但模块已加载、SD 已挂(手动跑 glove_daq_rv 即可)
 	if [ -f /userdata/glove_noauto ]; then
 		echo "[glovedaq] glove_noauto 标志存在, 跳过自启(手动模式)" >> $LOG
 		exit 0

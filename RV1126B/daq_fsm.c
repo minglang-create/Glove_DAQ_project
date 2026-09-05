@@ -100,11 +100,24 @@ int fsm_run(const fsm_cfg_t *cfg)
 		int n = cam_probe_i2c();
 		printf("[fsm] 相机在位: %d/2 %s\n", n, n == 2 ? "✓" : "★缺相机, 继续跑但记录在案★");
 	}
-	if (cfg->rec_dir && rec_open(cfg->rec_dir) != 0)
-		printf("[fsm] ★落盘目录不可用, 本次不落盘★\n");
-	glove_queue_pkt(GLV_PKT_RV_OK, NULL);          /* 0x5501: RV 自检完成, 尽早发 */
-	printf("[fsm] 已发 0x5501(RV 自检完成)。等待: STM32 自检包 / 按键 / 0xC301\n");
-	printf("      (按键短按=宣告主机; 无按键脚时 kill -USR2 %d 模拟)\n", getpid());
+	/* 存储自检: 落盘目标必须在 SD 卡上且剩余空间够。失败 = 自检未完成 →
+	 * 不发 0x5501(STM32 LED 不亮, 工人可见)、拒绝开始采集; 之后每秒复检, 插卡即自动恢复。 */
+	int storage_ok = 1; char why[256];
+	if (cfg->rec_dir) {
+		if (rec_check_storage(cfg->rec_dir, cfg->rec.min_free_gb, why, sizeof(why)) != 0) {
+			storage_ok = 0;
+			printf("[fsm] ★存储自检失败: %s★\n", why);
+			printf("      → 视为自检未完成: 不发 0x5501, 拒绝开始采集; 插好 SD 卡后自动恢复\n");
+		} else if (rec_open(cfg->rec_dir, &cfg->rec) != 0) {
+			storage_ok = 0;
+			printf("[fsm] ★落盘目录不可用★ 拒绝开始采集\n");
+		}
+	}
+	if (storage_ok) {
+		glove_queue_pkt(GLV_PKT_RV_OK, NULL);      /* 0x5501: RV 自检完成, 尽早发 */
+		printf("[fsm] 已发 0x5501(RV 自检完成)。等待: STM32 自检包 / 按键 / 0xC301\n");
+		printf("      (按键短按=宣告主机; 无按键脚时 kill -USR2 %d 模拟)\n", getpid());
+	}
 
 	uint64_t t_resend = now_ms(), t_frame0 = 0;
 
@@ -123,9 +136,19 @@ int fsm_run(const fsm_cfg_t *cfg)
 		/* ============ 等就绪: 自检包/按键/0xC301 ============ */
 		case ST_WAIT_READY: {
 			int r = poll_dispatch(&role, &hands);
+			/* 存储未就绪: 每秒复检, 插好卡即恢复并补发 0x5501 */
+			if (!storage_ok && now_ms() - t_resend > 1000) {
+				t_resend = now_ms();
+				if (rec_check_storage(cfg->rec_dir, cfg->rec.min_free_gb, why, sizeof(why)) == 0 &&
+				    rec_open(cfg->rec_dir, &cfg->rec) == 0) {
+					storage_ok = 1;
+					glove_queue_pkt(GLV_PKT_RV_OK, NULL);
+					printf("[fsm] 存储就绪 ✓ 已发 0x5501(RV 自检完成)\n");
+				}
+			}
 			/* 0x5501 无回执 → STM32 未活时每秒重发(幂等), 见到 0x5401 后再补 3 次停 */
 			static int extra = 3;
-			if (now_ms() - t_resend > 1000 && (!g_stm_alive || extra-- > 0)) {
+			if (storage_ok && now_ms() - t_resend > 1000 && (!g_stm_alive || extra-- > 0)) {
 				glove_queue_pkt(GLV_PKT_RV_OK, NULL);
 				t_resend = now_ms();
 			}
@@ -138,6 +161,13 @@ int fsm_run(const fsm_cfg_t *cfg)
 			if (cfg->auto_mode && r == 2) {            /* 台架: STM32 直通已在吐数据帧 */
 				printf("[fsm] -A 台架直通: 检测到数据帧\n");
 				role = 1; hands = 0; go = 1;
+			}
+			if (go && !storage_ok) {
+				printf("[fsm] ★收到开采请求但存储未就绪(%s), 拒绝★\n", why);
+				for (int k = 0; k < 30 && !g_ev_quit && !g_ev_long; k++) {   /* 消费掉可重复读的 0xC301 */
+					uint16_t h, dd[3]; glove_txn_poll(&h, dd); usleep(100*1000);
+				}
+				break;
 			}
 			if (go) {
 				printf("[fsm] 0xC301 开采请求: 角色=%s 模式=%s → 启动相机"
@@ -173,7 +203,7 @@ int fsm_run(const fsm_cfg_t *cfg)
 			if (r == 2) {
 				seg++;
 				align_reset();               /* 每次放号重新标定(XVS 重启过则网格换了) */
-				if (cfg->rec_dir) rec_segment_start(seg);
+				if (cfg->rec_dir) rec_segment_start();
 				glove_stats_reset();
 				printf("══════ RUNNING(段 %u) ══════\n", seg);
 				st = ST_RUNNING;
@@ -191,6 +221,11 @@ int fsm_run(const fsm_cfg_t *cfg)
 			static uint8_t raw[GLV_FRAME_LEN];
 			static glove_frame_t f;
 			static uint64_t t_stat = 0;
+			if (cfg->rec_dir && rec_space_low()) {   /* flush 线程报空间不足 → 结束采集 */
+				printf("[fsm] ★SD 卡空间不足, 停止采集★(换卡后重新上电)\n");
+				g_ev_long = 1;
+				break;
+			}
 			g_loop_break = 0;
 			int err = glove_read_frame(&f, raw, &g_loop_break);
 			if (err < 0) {                       /* 被事件打断或底层错 */
@@ -240,6 +275,8 @@ int fsm_run(const fsm_cfg_t *cfg)
 				       (unsigned long long)s->small_pkts,
 				       locked ? "已标定" : "标定中", off_ms, std_us, n, drift,
 				       slips ? " ★有滑移★" : "");
+				if (cfg->rec_dir)
+					printf("       [盘] 剩余 %.1fGB, 已开 %u 段\n", rec_free_gb(), rec_segment_count());
 			}
 			break;
 		}
@@ -254,7 +291,7 @@ int fsm_run(const fsm_cfg_t *cfg)
 			}
 			if (r == 2) {                        /* 数据帧回来了 = 恢复成功 */
 				seg++;
-				if (cfg->rec_dir) rec_segment_start(seg);
+				if (cfg->rec_dir) rec_segment_start();
 				printf("══════ RUNNING(段 %u, 恢复) ══════\n", seg);
 				st = ST_RUNNING;                 /* 对齐不重标: XVS 没停, 网格没变 */
 			} else {
@@ -271,10 +308,11 @@ int fsm_run(const fsm_cfg_t *cfg)
 	if (cam_on) cam_stop();
 	gv_finish();
 	const glove_stats_t *s = glove_stats();
-	printf("[fsm] 总账: 读%llu 有效%llu cycle %u→%u 丢%llu crc错%llu 段数%u\n",
+	printf("[fsm] 总账: 读%llu 有效%llu cycle %u→%u 丢%llu crc错%llu RUNNING次数%u 落盘段数%u\n",
 	       (unsigned long long)s->reads, (unsigned long long)s->ok,
 	       s->first_cycle, s->last_cycle,
-	       (unsigned long long)s->cycle_dropped, (unsigned long long)s->crc_err, seg);
+	       (unsigned long long)s->cycle_dropped, (unsigned long long)s->crc_err, seg,
+	       cfg->rec_dir ? rec_segment_count() : 0u);
 	return 0;
 }
 

@@ -27,7 +27,8 @@ adb shell /oem/usr/bin/glove_daq_rv          # 正式流程(按键触发)
 | `-V` | 逐帧校验 STM32 假数据(协议实现验收) |
 | `-w imu` / `joint` / `tactile` / `all` | 终端可视化视图 |
 | `-A` | 台架直通(STM32 AUTOSTART=1 时) |
-| `-o <dir>` | 落盘基目录(默认 `/userdata/daq`) |
+| `-o <dir>` | 落盘基目录(默认 `/mnt/sd/daq`,即 SD 卡;`none`=不落盘) |
+| `-F <sec>` / `-T <min>` / `-M <gb>` | fsync 间隔(5)/自动切段(10 分钟)/SD 剩余空间阈值(2GB;`-M 0`=不检查存储,允许落 eMMC 调试) |
 | `-G c:l` / `-K c:l` | PA1 / 按键 GPIO(默认 `0:4` / `0:0`) |
 
 ⚠ 烧录固件后**上电即用**:开机自动加载模块 + 自动启动 `glove_daq_rv`,按键即可采集。
@@ -42,7 +43,8 @@ daq_fsm.{c,h}       生命周期状态机: 自检→主从分配→启相机→�
 glove_link.{c,h}    SPI 事务层: 恒定 2690B 全双工 / 小包 / 数据帧 / CRC-16 ARC / PA1 握手
 cam_pipeline.{c,h}  双 IMX415 采集管线(ISP→VI→VENC H.265→时间戳配对), dual_cam 血统
 align.{c,h}         相机帧 ↔ CYCLE 自动标定(PA1 沿内核时间戳锚定 + 中位数 offset)
-recorder.{c,h}      分段落盘 seg_<n>_<boottime>/{cam0/1.h265, pairs.csv, glove.bin/csv}
+recorder.{c,h}      SD 卡分段落盘: 热路径只 fwrite 进页缓存; flush 线程做 fsync/切段/查空间
+                    (exFAT 必须周期 fsync 否则拔卡后文件大小不对); 卡不在/空间不足 = 自检失败
 glove_view.{c,h}    终端可视化
 button.{c,h}        按键(GPIO0_A0 低有效, 30ms 去抖, 2s 长按)
 RkLunch-GLOVEDAQ.sh 开机自启入口(打包进 /oem/usr/bin/): 加载模块+解锁 sensor+

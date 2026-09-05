@@ -11,12 +11,14 @@
 #ifndef DAQ_FSM_H
 #define DAQ_FSM_H
 #include "cam_pipeline.h"
+#include "recorder.h"
 
 typedef struct {
 	int auto_mode;         /* -A 台架直通: 不等按键/0xC301, MISO 见数据帧即启相机开跑 */
 	int no_cam;            /* -X 纯链路调试: 不碰相机 */
 	int verify_fake;       /* -V 假数据逐帧验收 */
 	const char *rec_dir;   /* 落盘基目录(NULL=不落盘) */
+	rec_cfg_t   rec;       /* fsync 间隔/切段时长/空间阈值 */
 	cam_cfg_t   cam;
 } fsm_cfg_t;
 
