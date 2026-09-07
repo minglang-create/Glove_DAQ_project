@@ -4,7 +4,7 @@
 
 | 项 | 值 |
 |---|---|
-| RV 侧口 | **UART0** = SoM 球 **A3(TX)/A4(RX)** = 立贴座 RVDB(1=TX 3=RX 2/4/5=GND),SoC IO 电平直出,无电平转换 |
+| RV 侧口 | **UART0 复用 m2** = SoC **GPIO0_B3(TX)/GPIO0_B4(RX)** = SoM 球 **A3/A4** = 立贴座 RVDB(1=TX 3=RX 2/4/5=GND),SoC IO 电平直出,无电平转换。依据 MYZR 核心板原理图 `MYZR-RV1126B-LB221-REVA-OPEN.pdf` |
 | 对端 | 转接板 STM32:**只能 TX 给我们**;我们的 TX 接到它一个普通 GPIO(不是 RX)→ 它收不了字节,但能看到电平沿 |
 | 参数 | 460800 8N1 |
 | 代价 | **UART0 原是内核控制台(fiq_debugger)**。让给数据后串口控制台消失,调试只剩 adb |
@@ -43,7 +43,7 @@ ch: 12bit ADC 0~4095;0xFFFF = 该 ADC 本轮没采到(DMA 超时),通常整组�
 
 ```
 sysdrv/source/kernel/arch/arm64/boot/dts/rockchip/
-  rv1126b-luckfox-aura-uart0-data.dtsi   关 fiq_debugger / 开 &uart0(m0=GPIO2_A0/A1) / bootargs 去 console+earlycon
+  rv1126b-luckfox-aura-uart0-data.dtsi   关 fiq_debugger / 开 &uart0(★m2=GPIO0_B3/B4★) / bootargs 去 console+earlycon
   rv1126b-luckfox-aura.dts 末尾:  #include "...-uart0-data.dtsi"   ← 注释掉 = 恢复串口控制台
 ```
 改完 `sudo ./build.sh kernel && sudo ./build.sh firmware`,烧 boot.img。
@@ -60,6 +60,15 @@ sysdrv/source/kernel/arch/arm64/boot/dts/rockchip/
 - **延时 avg** 正常应 ~1.5~2.5ms(对端采样 + 1.0ms 传输);**max** 若逼近 10ms 说明对端偶发卡顿;
 - **缺** 持续增长 = 对端没收到触发(电平/门限)或回得太慢;**迟弃** = 回帧超 10ms;
 - **xor错 / 重同步** 增长 = 线路噪声或波特率不匹配;**序号跳** = 对端跳拍(忙则跳过)。
+
+## ★踩坑记录:UART0 的 pinctrl 绝不能抄 SoC dtsi 的默认值 m0★
+
+SoC dtsi 里 `uart0` 节点默认 `pinctrl-0 = <&uart0m0_xfer_pins>`(GPIO2_A0/A1)。这两根在核心板上
+**是 SDMMC0_D0/D1**。2026-09-07 首版 dtsi 沿用了 m0,后果:内核启动时 `rockchip-pinctrl: could not
+request pin 64 (gpio2-0) from group sdmmc0-bus4-pins` → **SD 卡控制器整个消失**(`mmc1` 不存在、
+`/dev/mmcblk1*` 不出现),存储自检永远失败。fiq_debugger 时代没暴露是因为它不经 pinctrl 申请引脚
+(沿用 u-boot 设好的 m2)。教训:**引脚复用以核心板原理图为准,不信 SoC 默认值**;改 dts 后
+先 `dmesg | grep "could not request pin"` 再谈别的。
 
 ## 验证记录
 

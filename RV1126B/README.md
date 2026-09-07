@@ -98,4 +98,5 @@ XHS = 1H 周期行同步 ≈138kHz)。只给 XVS、XHS 静态高 → 从机永�
 | PA1(DATA_READY) | 球 K13 = GPIO0_A4 | STM32→RV,高=有包可读 |
 | 按键 SW3 | 球 A2 = GPIO0_A0 | 低有效 |
 | XVS | 相机 XVS 网 ↔ STM32 PB10(经 TXS0101 电平转换) | 60Hz 时基 |
+| UART0(调试口/外接 ADC) | 球 A3=TX / A4=RX = **GPIO0_B3/B4(复用 m2)** | ⚠ 不是 SoC 默认的 m0,m0 与 SDMMC0_D0/D1 冲突 |
 | XHS | 仅两相机互连(未接 STM32) | 见上方硬约束 |

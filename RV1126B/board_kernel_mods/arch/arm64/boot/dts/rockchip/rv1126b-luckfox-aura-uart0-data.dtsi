@@ -15,10 +15,14 @@
 	status = "disabled";
 };
 
-/* 2) 打开 UART0 普通串口驱动, 引脚复用 m0 = GPIO2_A0(TX)/GPIO2_A1(RX) = 控制台原来用的那组 */
+/* 2) 打开 UART0 普通串口驱动。★引脚复用必须是 m2 = GPIO0_B3(TX)/GPIO0_B4(RX)★
+ *    依据 MYZR 核心板原理图(MYZR-RV1126B-LB221-REVA-OPEN.pdf): UART0_TX_DBG=球A3=UART0_TX_M2=GPIO0_B3,
+ *    UART0_RX_DBG=球A4=UART0_RX_M2=GPIO0_B4。
+ *    ★踩坑记录(2026-09-07)★: 曾误用 SoC dtsi 默认的 m0(GPIO2_A0/A1)—— 那两根其实是 SDMMC0_D0/D1,
+ *    结果 sdmmc0 pinctrl 申请失败("could not request pin 64 (gpio2-0)"), SD 卡控制器整个消失。 */
 &uart0 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&uart0m0_xfer_pins>;
+	pinctrl-0 = <&uart0m2_xfer_pins>;
 	status = "okay";
 };
 

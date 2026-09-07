@@ -11,6 +11,8 @@
 #include <pthread.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
+#include <sys/mount.h>
+#include <errno.h>
 
 /* ---------- 受 g_mtx 保护的状态(热路径与 flush 线程共享) ---------- */
 static pthread_mutex_t g_mtx = PTHREAD_MUTEX_INITIALIZER;
@@ -64,6 +66,29 @@ static int mount_of(const char *path, char *dev, size_t dl, char *mp, size_t ml)
 	return found ? 0 : -1;
 }
 
+/* 热插卡自愈: base 的父目录(/mnt/sd/daq → /mnt/sd)还没挂 SD, 而 /dev/mmcblk1p1 已出现
+ * → 自己挂上(exfat, noatime)。开机后才插卡时没有任何自动挂载服务, 不做这步"插卡自动
+ * 恢复"就是空话。护栏: 父目录本身已是某个挂载点(如 /userdata)时绝不往上覆盖挂载。 */
+static int try_mount_sd(const char *base)
+{
+	char mp[256]; snprintf(mp, sizeof(mp), "%s", base);
+	char *sl = strrchr(mp, '/');
+	if (!sl || sl == mp) return -1;
+	*sl = 0;
+	struct stat st;
+	if (stat("/dev/mmcblk1p1", &st) != 0 || !S_ISBLK(st.st_mode)) return -1;   /* 卡还没被内核认到 */
+	char dev[256], cur[256];
+	if (mount_of(mp, dev, sizeof(dev), cur, sizeof(cur)) == 0 && strcmp(cur, mp) == 0)
+		return -1;                                          /* mp 已是挂载点, 不覆盖 */
+	mkdir(mp, 0755);
+	if (mount("/dev/mmcblk1p1", mp, "exfat", MS_NOATIME, NULL) != 0) {
+		printf("[rec] 检测到 SD 卡但自动挂载 %s 失败: %s\n", mp, strerror(errno));
+		return -1;
+	}
+	printf("[rec] 检测到 SD 卡, 已自动挂载 /dev/mmcblk1p1 → %s (exfat, noatime)\n", mp);
+	return 0;
+}
+
 int rec_check_storage(const char *base, double min_free_gb, char *why, size_t wl)
 {
 	if (why && wl) why[0] = 0;
@@ -72,6 +97,8 @@ int rec_check_storage(const char *base, double min_free_gb, char *why, size_t wl
 	if (mount_of(base, dev, sizeof(dev), mp, sizeof(mp)) != 0) {
 		snprintf(why, wl, "找不到 %s 所在的挂载点", base); return -1;
 	}
+	if (strncmp(dev, "/dev/mmcblk1", 12) != 0 && try_mount_sd(base) == 0)
+		mount_of(base, dev, sizeof(dev), mp, sizeof(mp));  /* 刚挂上, 重新定位 */
 	if (strncmp(dev, "/dev/mmcblk1", 12) != 0) {
 		snprintf(why, wl, "%s 落在 %s(%s) 而不是 SD 卡(/dev/mmcblk1*) —— SD 未挂载或未插卡",
 		         base, dev, mp);
