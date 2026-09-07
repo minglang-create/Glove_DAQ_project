@@ -29,6 +29,7 @@ static void tail_file(const char *path, int lines)
 	int start = (w - (n < lines ? n : lines) + 64) % 64;
 	for (int i = 0; i < (n < lines ? n : lines); i++) fputs(buf[(start + i) % 64], stdout);
 }
+static atomic_int g_first_pair = 0;          /* pair_cb 置 1: 第一对相机帧已到(rkaiq 首帧日志已打完) */
 static int cam_start_quiet(const cam_cfg_t *c, int verbose)
 {
 	if (verbose) return cam_start(c);
@@ -36,7 +37,11 @@ static int cam_start_quiet(const cam_cfg_t *c, int verbose)
 	int so = dup(1), se = dup(2);
 	int fd = open("/tmp/cam_init.log", O_WRONLY | O_CREAT | O_TRUNC, 0644);
 	if (fd >= 0) { dup2(fd, 1); dup2(fd, 2); close(fd); }
+	atomic_store(&g_first_pair, 0);
 	int r = cam_start(c);
+	/* rkaiq 在【第一帧到达】时还会打 "blc get bay3dbuf" / "no latest params"(每相机各一次, 无害),
+	 * 那在 cam_start 返回后 ~1s —— 静音窗口延到第一对帧到达(上限 3s), 把它们也收进文件 */
+	if (r == 0) for (int i = 0; i < 60 && !atomic_load(&g_first_pair); i++) usleep(50 * 1000);
 	fflush(stdout); fflush(stderr);
 	if (so >= 0) { dup2(so, 1); close(so); }
 	if (se >= 0) { dup2(se, 2); close(se); }
@@ -106,6 +111,7 @@ static int poll_dispatch(int *role, int *hands)
 static void pair_cb(const cam_pair_t *p, void *user)
 {
 	(void)user;
+	atomic_store(&g_first_pair, 1);
 	uint32_t cyc = 0; int64_t resid = 0;
 	int ok = (align_lookup(p->pts0, &cyc, &resid) == 0);
 	rec_on_pair(p, ok, cyc, resid);

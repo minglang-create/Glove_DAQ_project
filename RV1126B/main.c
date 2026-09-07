@@ -106,6 +106,9 @@ int main(int argc, char *argv[])
 	setvbuf(stdout, NULL, _IOLBF, 0);
 
 	printf("== Glove_DAQ_RV1126B (协议契约V1第四次修订) pid=%d ==\n", getpid());
+	/* rkaiq 日志级别(库内 getenv, 低 4 位=级别, 高位=模块掩码; 默认 0xff1)。设 0 只留错误。
+	 * 不覆盖用户显式设置的值; -v 时不动。 */
+	if (!cfg.verbose) setenv("persist_camera_engine_log", "0x0", 0);
 	if (!cfg.no_cam && access("/dev/mpi/vsys", F_OK) != 0) {
 		printf("★/dev/mpi 缺失: rockit 模块没加载 → 相机会启动失败★\n");
 		printf("  先执行:  sh /oem/usr/ko/insmod_ko.sh   然后重跑本程序\n");
