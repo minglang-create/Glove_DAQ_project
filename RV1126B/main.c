@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
 	btn_stop();
 	glove_close();
 	if (rc == 2) {                          /* 0x5F01 → 干净地重启自己(全新自检) */
-		/* ★关键★ rkaiq/rockit/mpp 自己 open 的设备 fd(/dev/video*, /dev/mpi/*, dma-buf…)没有
+		/* ★关键★ rkaiq/rockit/mpp 自己 open 的设备 fd(/dev/videoN、/dev/mpi/xxx、dma-buf 等)没有
 		 * CLOEXEC, 会原样泄漏进 exec 后的新进程 → 内核认为 ISP/VI/VENC 仍被持有 → 第二次
 		 * cam_start 在半占用状态上初始化 → rkaiq 段错误(实测: 长按重新自检后再开采即崩)。
 		 * 这里给所有 fd 打上 CLOEXEC, 由内核在 exec 那一刻原子回收(不直接 close: 库线程可能
