@@ -43,11 +43,12 @@ static uint64_t now_ms(void)
 
 /* ================= 虚拟时间(目录名前缀) =================
  * 板子没有 RTC, 日历时间不可信; 但落盘目录必须【跨上电不撞名、按名字能排先后】。
- * 规则(用户定): 卡上 <base>/.vtime 记一个虚拟时间 YYYYMMDDHHMM 和写它时的 boot_id:
+ * 规则(用户定): 板子自己的 /userdata/glove_vtime 记一个虚拟时间 YYYYMMDDHHMM 和写它时的
+ * boot_id —— 它属于【这块采集板】(相当于记录本板一共开采过多少次), 不跟随 SD 卡走:
  *   - 文件为空/没有 → 用当前系统时间做种;
  *   - boot_id 与本次相同(长按/Ctrl-C 引起的 exec 重启)→ 同一次开机, 原样沿用, 段号接着数;
  *   - boot_id 不同(真的断电再上电)→ 在文件时间上 +10 小时;
- *   - 兜底: 算出的前缀若卡上已有同名目录(换过卡/重刷过)→ 继续 +10 小时直到不撞。
+ *   - 兜底: 算出的前缀若卡上已有同名目录(换过卡/重刷过固件把 userdata 清了)→ 继续 +10 小时直到不撞。
  * 目录名 = <前缀>_seg_<段号 3 位>, 例 202604131938_seg_001, 字典序 = 时间序。 */
 static void vt_now(char out[24])
 {
@@ -82,12 +83,13 @@ static unsigned max_seg_of(const char *base, const char *prefix)
 		}
 	closedir(d); return mx;
 }
+#define VTIME_PATH "/userdata/glove_vtime"   /* 板级状态: 跨上电保留; 完整重烧固件会清空(之后重新做种+防撞) */
 static void vtime_init(const char *base)
 {
-	char bid[64] = "?", saved_vt[24] = "", saved_bid[64] = "", path[300];
+	char bid[64] = "?", saved_vt[24] = "", saved_bid[64] = "";
+	const char *path = VTIME_PATH;
 	FILE *f = fopen("/proc/sys/kernel/random/boot_id", "r");
 	if (f) { if (fgets(bid, sizeof(bid), f)) bid[strcspn(bid, "\n")] = 0; fclose(f); }
-	snprintf(path, sizeof(path), "%s/.vtime", base);
 	f = fopen(path, "r");
 	if (f) { if (fscanf(f, "%23s %63s", saved_vt, saved_bid) < 1) saved_vt[0] = 0; fclose(f); }
 
