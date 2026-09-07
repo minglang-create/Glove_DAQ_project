@@ -1,6 +1,6 @@
 /* =============================================================================
  * recorder.h —— 分段落盘(SD 卡, exFAT)
- *   <base>/seg_<段号>_<boottime秒>/
+ *   <base>/<虚拟时间YYYYMMDDHHMM>_seg_<段号>/   (虚拟时间: 见 recorder.c vtime_init 注释)
  *     cam0.h265 cam1.h265   两路裸码流(顺序追加, IPPP 无B帧)
  *     pairs.csv             pair_seq,seq0,seq1,pts0,pts1,dpts_us,cycle,residual_us,
  *                           off0,len0,off1,len1  (off=本段码流文件内字节偏移)

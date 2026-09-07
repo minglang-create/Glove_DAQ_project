@@ -9,7 +9,8 @@ daq_check.py —— 手套采集数据【上位机验收工具】(纯标准库, 
   python daq_check.py <段目录> --export         另存 glove_decoded.csv(关节/IMU/四元数, 可用 Excel 画图)
   python daq_check.py <段目录> --frame 100      打印第 100 帧手套数据的解码结果
 
-一段数据 = seg_<段号>_<开机秒>/ 下 6 个文件, 全部按 cycle(周期号)对齐:
+一段数据 = <虚拟时间YYYYMMDDHHMM>_seg_<段号>/ 下 6 个文件, 全部按 cycle(周期号)对齐
+(虚拟时间: 每次上电 +10 小时的递增计数, 不是真实时钟; 同一次开机内段号递增):
   cam0.h265 cam1.h265  两路 H.265 裸码流(ffplay -f hevc cam0.h265 可播), 每帧在文件里的位置见 pairs.csv
   pairs.csv            相机: 一行 = 一对配好的左右帧 → 属于哪个 cycle、两路各在码流文件的 off/len
   glove.bin            手套: 原始 2690 字节 SPI 数据帧顺序追加(协议 v2 布局, 大端)
@@ -212,7 +213,8 @@ def main():
     ap.add_argument('path'); ap.add_argument('--export', action='store_true'); ap.add_argument('--frame', type=int)
     a = ap.parse_args()
     p = a.path
-    segs = [p] if os.path.isfile(os.path.join(p, 'glove.csv')) else sorted(os.path.join(p, d) for d in os.listdir(p) if d.startswith('seg_'))
+    segs = [p] if os.path.isfile(os.path.join(p, 'glove.csv')) else sorted(
+        os.path.join(p, d) for d in os.listdir(p) if ('_seg_' in d or d.startswith('seg_')) and os.path.isdir(os.path.join(p, d)))
     if not segs: print("没找到段目录(seg_*)"); sys.exit(2)
     allp = {}
     for s in segs: allp[s] = check_segment(s, a.export, a.frame)

@@ -342,9 +342,14 @@ int fsm_run(const fsm_cfg_t *cfg)
 		}
 	}
 
-	/* ============ SHUTDOWN ============ */
+	/* ============ SHUTDOWN(Ctrl-C / killall -TERM) ============
+	 * 也发 0x5F01: 让 STM32 回自检态, 下次起程序和上电后第一次完全等价(调试反复进出不留状态)。 */
 	printf("══════ 收尾 ══════\n");
 	rec_close();
+	if (cfg->rec_dir) printf("[fsm] 数据已落盘 ✓\n");
+	glove_queue_pkt(GLV_PKT_RECHECK, NULL);
+	{ uint16_t h, d[3]; glove_txn_poll(&h, d); }   /* 立刻投递 0x5F01 */
+	printf("[fsm] 已发 0x5F01(STM32 回自检态)\n");
 	ext_uart_close();
 	if (cam_on) cam_stop();
 	gv_finish();

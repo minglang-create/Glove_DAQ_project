@@ -13,6 +13,7 @@
 #include <sys/statvfs.h>
 #include <sys/mount.h>
 #include <errno.h>
+#include <dirent.h>
 
 /* ---------- 受 g_mtx 保护的状态(热路径与 flush 线程共享) ---------- */
 static pthread_mutex_t g_mtx = PTHREAD_MUTEX_INITIALIZER;
@@ -23,6 +24,7 @@ static int      g_active = 0;
 static unsigned g_seg = 0;                /* 已开过的段数 */
 static uint64_t g_seg_t0_ms = 0;          /* 当前段开始时刻(切段计时) */
 static char     g_dir[400];               /* 当前段目录(落盘报告用) */
+static char     g_prefix[24] = "000000000000";   /* 本次开机的虚拟时间 YYYYMMDDHHMM(目录名前缀) */
 static uint64_t g_npair, g_nglove, g_next, g_next_ok;   /* 本段已写行数(落盘报告用) */
 
 /* ---------- 只有 flush 线程/主线程碰的状态 ---------- */
@@ -37,6 +39,75 @@ static uint64_t now_ms(void)
 {
 	struct timespec t; clock_gettime(CLOCK_MONOTONIC, &t);
 	return (uint64_t)t.tv_sec * 1000 + (uint64_t)t.tv_nsec / 1000000;
+}
+
+/* ================= 虚拟时间(目录名前缀) =================
+ * 板子没有 RTC, 日历时间不可信; 但落盘目录必须【跨上电不撞名、按名字能排先后】。
+ * 规则(用户定): 卡上 <base>/.vtime 记一个虚拟时间 YYYYMMDDHHMM 和写它时的 boot_id:
+ *   - 文件为空/没有 → 用当前系统时间做种;
+ *   - boot_id 与本次相同(长按/Ctrl-C 引起的 exec 重启)→ 同一次开机, 原样沿用, 段号接着数;
+ *   - boot_id 不同(真的断电再上电)→ 在文件时间上 +10 小时;
+ *   - 兜底: 算出的前缀若卡上已有同名目录(换过卡/重刷过)→ 继续 +10 小时直到不撞。
+ * 目录名 = <前缀>_seg_<段号 3 位>, 例 202604131938_seg_001, 字典序 = 时间序。 */
+static void vt_now(char out[24])
+{
+	time_t t = time(NULL); struct tm tm; gmtime_r(&t, &tm);
+	strftime(out, 24, "%Y%m%d%H%M", &tm);
+}
+static int vt_add_hours(char vt[24], int hours)
+{
+	struct tm tm; memset(&tm, 0, sizeof(tm));
+	int Y, M, D, h, m;
+	if (sscanf(vt, "%4d%2d%2d%2d%2d", &Y, &M, &D, &h, &m) != 5) return -1;
+	tm.tm_year = Y - 1900; tm.tm_mon = M - 1; tm.tm_mday = D; tm.tm_hour = h; tm.tm_min = m;
+	time_t t = timegm(&tm) + (time_t)hours * 3600;
+	gmtime_r(&t, &tm); strftime(vt, 24, "%Y%m%d%H%M", &tm);
+	return 0;
+}
+static int prefix_used(const char *base, const char *prefix)
+{
+	DIR *d = opendir(base); if (!d) return 0;
+	struct dirent *e; size_t n = strlen(prefix); int used = 0;
+	while ((e = readdir(d)))
+		if (strncmp(e->d_name, prefix, n) == 0 && strncmp(e->d_name + n, "_seg_", 5) == 0) { used = 1; break; }
+	closedir(d); return used;
+}
+static unsigned max_seg_of(const char *base, const char *prefix)
+{
+	DIR *d = opendir(base); if (!d) return 0;
+	struct dirent *e; size_t n = strlen(prefix); unsigned mx = 0;
+	while ((e = readdir(d)))
+		if (strncmp(e->d_name, prefix, n) == 0 && strncmp(e->d_name + n, "_seg_", 5) == 0) {
+			unsigned v = (unsigned)atoi(e->d_name + n + 5); if (v > mx) mx = v;
+		}
+	closedir(d); return mx;
+}
+static void vtime_init(const char *base)
+{
+	char bid[64] = "?", saved_vt[24] = "", saved_bid[64] = "", path[300];
+	FILE *f = fopen("/proc/sys/kernel/random/boot_id", "r");
+	if (f) { if (fgets(bid, sizeof(bid), f)) bid[strcspn(bid, "\n")] = 0; fclose(f); }
+	snprintf(path, sizeof(path), "%s/.vtime", base);
+	f = fopen(path, "r");
+	if (f) { if (fscanf(f, "%23s %63s", saved_vt, saved_bid) < 1) saved_vt[0] = 0; fclose(f); }
+
+	if (saved_vt[0] && strcmp(saved_bid, bid) == 0) {
+		snprintf(g_prefix, sizeof(g_prefix), "%s", saved_vt);      /* 同一次开机: 沿用 */
+		printf("[rec] 虚拟时间 %s (同一次开机, 沿用)\n", g_prefix);
+		return;
+	}
+	if (saved_vt[0] && vt_add_hours(saved_vt, 10) == 0) {
+		snprintf(g_prefix, sizeof(g_prefix), "%s", saved_vt);      /* 新一次上电: +10h */
+	} else {
+		vt_now(g_prefix);                                          /* 首次/文件坏: 用当前时间做种 */
+	}
+	int bumps = 0;
+	while (prefix_used(base, g_prefix) && bumps < 10000) { vt_add_hours(g_prefix, 10); bumps++; }   /* 防撞 */
+	f = fopen(path, "w");
+	if (f) { fprintf(f, "%s %s\n", g_prefix, bid); fflush(f); fsync(fileno(f)); fclose(f); }
+	printf("[rec] 虚拟时间 %s (%s%s)\n", g_prefix,
+	       saved_vt[0] ? "新一次上电, +10h" : "首次使用, 以当前时间做种",
+	       bumps ? ", 已避开卡上同名目录" : "");
 }
 
 /* ================= 存储自检 ================= */
@@ -118,8 +189,7 @@ int rec_check_storage(const char *base, double min_free_gb, char *why, size_t wl
 /* ================= 段文件开/关(不持锁, 慢操作) ================= */
 static int open_seg_files(unsigned seg, FILE *out[NF], char *dir, size_t dl)
 {
-	struct timespec t; clock_gettime(CLOCK_BOOTTIME, &t);
-	snprintf(dir, dl, "%s/seg_%03u_%ld", g_base, seg, (long)t.tv_sec);
+	snprintf(dir, dl, "%s/%s_seg_%03u", g_base, g_prefix, seg);
 	if (mkdir(dir, 0755) != 0) { printf("[rec] 建段目录失败 %s\n", dir); return -1; }
 	static const char *names[NF] = { "cam0.h265", "cam1.h265", "pairs.csv", "glove.bin", "glove.csv", "ext_joints.csv" };
 	static const char *modes[NF] = { "wb", "wb", "w", "wb", "w", "w" };
@@ -351,6 +421,11 @@ int rec_open(const char *base, const rec_cfg_t *cfg)
 	}
 	g_space_low = 0;
 	g_free_gb = free_gb_of(g_base);
+	vtime_init(g_base);
+	pthread_mutex_lock(&g_mtx);
+	g_seg = max_seg_of(g_base, g_prefix);       /* exec 重启后段号接着数, 不从 001 重来 */
+	pthread_mutex_unlock(&g_mtx);
+	if (g_seg) printf("[rec] 本次开机已有 %u 段, 下一段从 %03u 开始\n", g_seg, g_seg + 1);
 	if (!g_thr_run) {
 		g_thr_run = 1;
 		if (pthread_create(&g_thr, NULL, flush_thread, NULL) != 0) {
