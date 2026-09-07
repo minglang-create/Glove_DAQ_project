@@ -48,8 +48,9 @@ sysdrv/source/kernel/arch/arm64/boot/dts/rockchip/
 ```
 改完 `sudo ./build.sh kernel && sudo ./build.sh firmware`,烧 boot.img。
 
-应用侧:`glove_daq_rv -U /dev/ttyS0[:460800][:trig|free]`,默认不启用,零副作用。
-建议写进 `RkLunch-GLOVEDAQ.sh` 的启动参数。
+应用侧:**默认已启用** `/dev/ttyS0:460800:trig`(2026-09-07 起),开机自启也随之生效;
+`-U none` 关闭,`-U /dev/ttyS0:460800:free` 切备用模式。串口打不开(旧 boot 没让出 UART0)只打一条
+告警继续跑,不影响相机与手套采集;对端没接时每拍记 `valid=0`,无害。
 
 ## 落盘与诊断
 

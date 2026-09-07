@@ -15,8 +15,9 @@
  *   -F <sec>     周期 fsync 间隔    默认 5 (0=关; exFAT 不 fsync 拔卡会丢文件大小)
  *   -T <min>     按时间自动切段     默认 10 (0=关; 损伤隔离+可边录边拉)
  *   -M <gb>      SD 剩余空间阈值    默认 2.0 (0=不检查存储, 允许落 eMMC 调试)
- *   -U <dev>[:baud][:trig|free]  外接转接板 21 路关节 ADC 串口(默认不启用)
- *                例: -U /dev/ttyS0:460800:trig   ★需 dts 变体让出 UART0(控制台)★
+ *   -U <dev>[:baud][:trig|free]  外接转接板 21 路关节 ADC 串口
+ *                ★默认已启用 = /dev/ttyS0:460800:trig★  关闭: -U none
+ *                串口打不开(如旧 boot 没让出 UART0)只告警不阻塞
  *   -w <view>    视图 hdr/imu/joint/tactile/all(默认 hdr)   -r <hz> 重绘率
  *   -V           STM32 假数据逐帧验收
  *   -A           台架直通(STM32 AUTOSTART=1 时: 见数据帧即启相机开跑)
@@ -59,6 +60,7 @@ int main(int argc, char *argv[])
 	fsm_cfg_t cfg;
 	memset(&cfg, 0, sizeof(cfg));
 	cfg.rec.fsync_sec = 5; cfg.rec.rotate_min = 10; cfg.rec.min_free_gb = 2.0;   /* SD 落盘默认 */
+	cfg.ext_dev = "/dev/ttyS0"; cfg.ext_baud = 460800; cfg.ext_trig = 1;         /* 外接 ADC 串口默认开(2026-09-07) */
 	g_argv = argv;
 
 	int ch, a, b;
@@ -75,6 +77,7 @@ int main(int argc, char *argv[])
 		case 'H': cfg.cam.height = atoi(optarg); break;
 		case 'b': cfg.cam.bitrate_kbps = atoi(optarg); break;
 		case 'U': {
+			if (strcmp(optarg, "none") == 0) { cfg.ext_dev = NULL; break; }   /* -U none = 关闭 */
 			static char ubuf[128]; snprintf(ubuf, sizeof(ubuf), "%s", optarg);
 			char *dev = strtok(ubuf, ":"), *bd = strtok(NULL, ":"), *md = strtok(NULL, ":");
 			cfg.ext_dev = dev; cfg.ext_baud = bd ? atoi(bd) : 460800;
