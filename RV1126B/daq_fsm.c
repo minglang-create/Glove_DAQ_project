@@ -124,14 +124,13 @@ int fsm_run(const fsm_cfg_t *cfg)
 	if (storage_ok) {
 		glove_queue_pkt(GLV_PKT_RV_OK, NULL);      /* 0x5501: RV 自检完成, 尽早发 */
 		printf("[fsm] 已发 0x5501(RV 自检完成)。等待: STM32 自检包 / 按键 / 0xC301\n");
-		printf("      (按键短按=宣告主机; 无按键脚时 kill -USR2 %d 模拟)\n", getpid());
+		printf("      (短按=开采; 采集中长按2s=暂停并落盘, 之后可直接断电; kill -USR2 %d 模拟短按)\n", getpid());
 	}
 
 	uint64_t t_resend = now_ms(), t_frame0 = 0;
 
 	while (!g_ev_quit) {
-		/* ---------- 通用事件 ---------- */
-		if (g_ev_long) { printf("[fsm] 长按 → 结束\n"); break; }
+		/* ---------- 通用事件(按键永不退出程序; 退出只靠 INT/TERM) ---------- */
 		if (g_ev_recheck) {
 			printf("[fsm] 发 0x5F01 重新自检, 进程将重启\n");
 			glove_queue_pkt(GLV_PKT_RECHECK, NULL);
@@ -160,9 +159,10 @@ int fsm_run(const fsm_cfg_t *cfg)
 				glove_queue_pkt(GLV_PKT_RV_OK, NULL);
 				t_resend = now_ms();
 			}
+			if (g_ev_long) { g_ev_long = 0; g_loop_break = 0; }   /* 空闲时长按忽略 */
 			if (g_ev_short) {
 				g_ev_short = 0; g_loop_break = 0;
-				printf("[fsm] 按键 → 发 0x5101(宣告本手套为主机)\n");
+				printf("[fsm] 短按 → 发 0x5101(宣告本手套为主机, 开采)\n");
 				glove_queue_pkt(GLV_PKT_IAM_MASTER, NULL);
 			}
 			int go = (r == 1);
@@ -172,7 +172,7 @@ int fsm_run(const fsm_cfg_t *cfg)
 			}
 			if (go && !storage_ok) {
 				printf("[fsm] ★收到开采请求但存储未就绪(%s), 拒绝★\n", why);
-				for (int k = 0; k < 30 && !g_ev_quit && !g_ev_long; k++) {   /* 消费掉可重复读的 0xC301 */
+				for (int k = 0; k < 30 && !g_ev_quit; k++) {   /* 消费掉可重复读的 0xC301 */
 					uint16_t h, dd[3]; glove_txn_poll(&h, dd); usleep(100*1000);
 				}
 				break;
@@ -186,9 +186,9 @@ int fsm_run(const fsm_cfg_t *cfg)
 					if (cam_start(&cfg->cam) != 0) {
 						cam_stop();          /* ★清干净半初始化的 ISP/VI, 否则重试更乱★ */
 						printf("[fsm] ★相机启动失败★(常见: /dev/mpi 未加载 → 先 insmod_ko.sh)\n");
-						printf("      冷却 3s 后可重试; 长按结束 / 0x5F01 重来\n");
+						printf("      冷却 3s 后可重试; 或 kill -USR1 发 0x5F01 重来\n");
 						/* 冷却期把当前 0xC301 消费掉几拍, 避免"可重复读"导致的疯狂重试 */
-						for (int k = 0; k < 30 && !g_ev_quit && !g_ev_long; k++) {
+						for (int k = 0; k < 30 && !g_ev_quit; k++) {
 							uint16_t h, dd[3]; glove_txn_poll(&h, dd); usleep(100*1000);
 						}
 						break;
@@ -230,23 +230,24 @@ int fsm_run(const fsm_cfg_t *cfg)
 			static uint8_t raw[GLV_FRAME_LEN];
 			static glove_frame_t f;
 			static uint64_t t_stat = 0;
-			if (cfg->rec_dir && rec_space_low()) {   /* flush 线程报空间不足 → 结束采集 */
-				printf("[fsm] ★SD 卡空间不足, 停止采集★(换卡后重新上电)\n");
-				g_ev_long = 1;
-				break;
+			if (cfg->rec_dir && rec_space_low()) {   /* flush 线程报空间不足 → 等同长按: 暂停并落盘 */
+				printf("[fsm] ★SD 卡空间不足, 暂停采集并落盘★(换卡后重新上电)\n");
+				g_ev_long = 1; g_loop_break = 1;
 			}
 			g_loop_break = 0;
 			int err = glove_read_frame(&f, raw, &g_loop_break);
 			if (err < 0) {                       /* 被事件打断或底层错 */
-				if (g_ev_short) {
-					g_ev_short = 0;
-					printf("[fsm] 按键 → 暂停(0xC201, XVS 不停)\n");
+				if (g_ev_short) g_ev_short = 0;   /* 采集中短按: 忽略(防误触) */
+				if (g_ev_long) {
+					g_ev_long = 0;
+					printf("[fsm] 长按 → 暂停(0xC201, XVS 不停); 段收口并 fsync, 之后可直接断电\n");
 					glove_queue_pkt(GLV_PKT_STOP, NULL);
 					uint16_t h, d[3]; glove_txn_poll(&h, d);   /* 立即投递 */
-					rec_segment_stop();
+					rec_segment_stop();               /* 内含 fsync: 返回即数据在卡上 */
+					printf("[fsm] 数据已落盘 ✓ (短按=重新开采, 新开一段)\n");
 					st = ST_PAUSED;
 				}
-				break;                           /* 长按/退出/recheck 由循环头处理 */
+				break;                           /* 退出/recheck 由循环头处理 */
 			}
 			if (err & GLV_ERR_MAGIC) {         /* 尸检: 前5个坏帧打头部 */
 				static int autop = 0;
@@ -305,18 +306,19 @@ int fsm_run(const fsm_cfg_t *cfg)
 			break;
 		}
 
-		/* ============ 暂停: 轮询等恢复 ============ */
+		/* ============ 暂停(已落盘, 可断电): 短按=重新开采 ============ */
 		case ST_PAUSED: {
 			int r = poll_dispatch(NULL, NULL);
+			if (g_ev_long) { g_ev_long = 0; g_loop_break = 0; }   /* 已暂停, 再长按忽略 */
 			if (g_ev_short) {
 				g_ev_short = 0; g_loop_break = 0;
-				printf("[fsm] 按键 → 恢复(0xC101)\n");
+				printf("[fsm] 短按 → 重新开采(0xC101)\n");
 				glove_queue_pkt(GLV_PKT_START, NULL);
 			}
-			if (r == 2) {                        /* 数据帧回来了 = 恢复成功 */
+			if (r == 2) {                        /* 数据帧回来了 = 重新开采成功 */
 				seg++;
 				if (cfg->rec_dir) rec_segment_start();
-				printf("══════ RUNNING(段 %u, 恢复) ══════\n", seg);
+				printf("══════ RUNNING(段 %u, 重新开采) ══════\n", seg);
 				st = ST_RUNNING;                 /* 对齐不重标: XVS 没停, 网格没变 */
 			} else {
 				usleep(200 * 1000);

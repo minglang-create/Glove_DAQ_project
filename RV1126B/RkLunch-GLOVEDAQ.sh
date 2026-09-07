@@ -15,8 +15,8 @@
 # 【★不碰 USB gadget★】只起采集程序,不建 functionfs gadget → adb 全程常在,
 #   永不自锁。自启方案一律不动 gadget(定规, 见 PROJECT_STATE §8)。
 #
-# 【工人使用】上电 → 本脚本把程序跑起来 → 按一下按键开始采集 →
-#   长按 2 秒结束 → 程序退出 → 本脚本自动重起它 → 可直接开始下一次采集。
+# 【工人使用】上电 → 本脚本把程序跑起来 → 短按开采 → 长按 2 秒暂停(段收口+fsync, 可直接
+#   断电)→ 短按重新开采(新开一段)。按键不会退出程序; 下面的循环只是崩溃兜底。
 #
 # 日志: /userdata/glove_daq.log
 # 逃生口(调试用): touch /userdata/glove_noauto && reboot
@@ -70,7 +70,7 @@ APP=/oem/usr/bin/glove_daq_rv
 
 	[ -x $APP ] || { echo "[glovedaq] ★$APP 不存在或不可执行★" >> $LOG; exit 1; }
 
-	# 4) 起采集程序。长按结束后自动重起 → 工人可连续做多次采集。
+	# 4) 起采集程序。正常情况它永不退出(按键只暂停/开采); 异常退出则自动重起(崩溃兜底)。
 	#    异常快退(<5s)时退避到 10s, 防止崩溃循环把日志刷爆。
 	while true; do
 		t0=$(cut -d. -f1 /proc/uptime)
