@@ -22,6 +22,8 @@ static uint64_t g_off[2], g_goff;
 static int      g_active = 0;
 static unsigned g_seg = 0;                /* 已开过的段数 */
 static uint64_t g_seg_t0_ms = 0;          /* 当前段开始时刻(切段计时) */
+static char     g_dir[400];               /* 当前段目录(落盘报告用) */
+static uint64_t g_npair, g_nglove, g_next, g_next_ok;   /* 本段已写行数(落盘报告用) */
 
 /* ---------- 只有 flush 线程/主线程碰的状态 ---------- */
 static char      g_base[256];
@@ -140,15 +142,30 @@ static int open_seg_files(unsigned seg, FILE *out[NF], char *dir, size_t dl)
 }
 
 /* fflush → fsync → fclose。fsync 让 exFAT 把文件大小写进目录项(拔卡后文件才完整可见) */
-static void close_files(FILE *f[NF])
+/* 落盘报告: fsync 之后统计, 打印出来的大小就是已经在卡上的大小 —— "落盘了什么"一目了然 */
+static void seg_report(const char *dir, FILE *f[NF], uint64_t np, uint64_t ng, uint64_t ne, uint64_t ne_ok, double secs)
 {
+	static const char *names[NF] = { "cam0.h265", "cam1.h265", "pairs.csv", "glove.bin", "glove.csv", "ext_joints.csv" };
+	double mb[NF] = {0};
 	for (int i = 0; i < NF; i++) {
-		if (!f[i]) continue;
-		fflush(f[i]);
-		fsync(fileno(f[i]));
-		fclose(f[i]);
-		f[i] = NULL;
+		struct stat st;
+		if (f[i] && fstat(fileno(f[i]), &st) == 0) mb[i] = (double)st.st_size / (1024.0 * 1024.0);
 	}
+	printf("[rec] 段已落盘 %s  (时长 %.1f s, 共 %.1f MB)\n", dir, secs,
+	       mb[0] + mb[1] + mb[2] + mb[3] + mb[4] + mb[5]);
+	printf("      %-14s %8.1f MB   %-14s %8.1f MB   %-14s %llu 行\n",
+	       names[0], mb[0], names[1], mb[1], names[2], (unsigned long long)np);
+	printf("      %-14s %8.1f MB (%llu 帧)   %-14s %llu 行   %-14s %llu 行(有效 %llu)\n",
+	       names[3], mb[3], (unsigned long long)ng, names[4], (unsigned long long)ng,
+	       names[5], (unsigned long long)ne, (unsigned long long)ne_ok);
+}
+static void close_files(FILE *f[NF])          /* fflush + fsync(不 close, 让报告能 fstat) */
+{
+	for (int i = 0; i < NF; i++) { if (f[i]) { fflush(f[i]); fsync(fileno(f[i])); } }
+}
+static void close_files_final(FILE *f[NF])
+{
+	for (int i = 0; i < NF; i++) { if (f[i]) { fclose(f[i]); f[i] = NULL; } }
 }
 
 /* ================= 热路径(持锁时间 = 一次 fwrite 进页缓存) ================= */
@@ -167,6 +184,7 @@ void rec_on_pair(const cam_pair_t *p, int calib_ok, uint32_t cycle, int64_t resi
 			(unsigned long long)g_off[0], p->l0,
 			(unsigned long long)g_off[1], p->l1);
 		g_off[0] += p->l0; g_off[1] += p->l1;
+		g_npair++;
 	}
 	pthread_mutex_unlock(&g_mtx);
 }
@@ -179,6 +197,7 @@ void rec_on_ext(uint32_t cycle, const ext_frame_t *f)
 		for (int i = 0; i < EXT_NCH; i++)
 			fprintf(g_f[5], f->valid ? ",%u" : ",", f->ch[i]);    /* 缺失拍: 通道列留空 */
 		fputc('\n', g_f[5]);
+		g_next++; if (f->valid) g_next_ok++;
 	}
 	pthread_mutex_unlock(&g_mtx);
 }
@@ -191,6 +210,7 @@ void rec_on_glove(const uint8_t *raw, uint32_t cycle, uint64_t edge_ns)
 		fprintf(g_f[4], "%u,%llu,%llu\n", cycle,
 			(unsigned long long)edge_ns, (unsigned long long)g_goff);
 		g_goff += GLV_FRAME_LEN;
+		g_nglove++;
 	}
 	pthread_mutex_unlock(&g_mtx);
 }
@@ -207,24 +227,30 @@ int rec_segment_start(void)
 	pthread_mutex_lock(&g_mtx);
 	memcpy(g_f, nf, sizeof(g_f));
 	g_off[0] = g_off[1] = g_goff = 0;
+	g_npair = g_nglove = g_next = g_next_ok = 0;
+	snprintf(g_dir, sizeof(g_dir), "%s", dir);
 	g_seg_t0_ms = now_ms();
 	g_active = 1;
 	pthread_mutex_unlock(&g_mtx);
-	printf("[rec] 开段 %s\n", dir);
+	printf("[rec] 开段 %s\n      写入: cam0.h265 cam1.h265 pairs.csv glove.bin glove.csv ext_joints.csv\n", dir);
 	return 0;
 }
 
 void rec_segment_stop(void)
 {
-	FILE *old[NF];
+	FILE *old[NF]; char dir[400]; uint64_t np, ng, ne, neok; double secs;
 	pthread_mutex_lock(&g_mtx);
 	if (!g_active) { pthread_mutex_unlock(&g_mtx); return; }
 	g_active = 0;                          /* 先置 0: 热路径立刻停写 */
 	memcpy(old, g_f, sizeof(old));
 	memset(g_f, 0, sizeof(g_f));
+	snprintf(dir, sizeof(dir), "%s", g_dir);
+	np = g_npair; ng = g_nglove; ne = g_next; neok = g_next_ok;
+	secs = (double)(now_ms() - g_seg_t0_ms) / 1000.0;
 	pthread_mutex_unlock(&g_mtx);
-	close_files(old);                      /* 慢操作在锁外 */
-	printf("[rec] 段已收口(已 fsync)\n");
+	close_files(old);                      /* 慢操作(fsync)在锁外 */
+	seg_report(dir, old, np, ng, ne, neok, secs);
+	close_files_final(old);
 }
 
 /* ================= flush 线程: fsync / 切段 / 查空间 ================= */
@@ -260,15 +286,23 @@ static void do_rotate(void)
 		rmdir(dir);
 		return;
 	}
+	char odir[400]; uint64_t np, ng, ne, neok; double secs;
 	memcpy(old, g_f, sizeof(old));
 	memcpy(g_f, nf, sizeof(g_f));          /* 原子换段: 之后的记录整条落新段 */
+	snprintf(odir, sizeof(odir), "%s", g_dir);
+	np = g_npair; ng = g_nglove; ne = g_next; neok = g_next_ok;
+	secs = (double)(now_ms() - g_seg_t0_ms) / 1000.0;
 	g_off[0] = g_off[1] = g_goff = 0;
+	g_npair = g_nglove = g_next = g_next_ok = 0;
+	snprintf(g_dir, sizeof(g_dir), "%s", dir);
 	g_seg = seg;
 	g_seg_t0_ms = now_ms();
 	pthread_mutex_unlock(&g_mtx);
 
 	close_files(old);                      /* 旧段收口(fsync)在锁外 */
-	printf("[rec] 切段 → %s\n", dir);
+	seg_report(odir, old, np, ng, ne, neok, secs);
+	close_files_final(old);
+	printf("[rec] 切段 → %s\n      写入: cam0.h265 cam1.h265 pairs.csv glove.bin glove.csv ext_joints.csv\n", dir);
 }
 
 static void *flush_thread(void *arg)
