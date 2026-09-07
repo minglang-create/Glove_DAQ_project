@@ -178,3 +178,9 @@
 		};
 	};
 };
+
+/* ★UART0 用途二选一(2026-09-07)★ ★必须放在文件末尾: 它要覆盖上面 chosen 里的 bootargs, dts 后定义者胜★
+ *   启用下面这行 = UART0 让给外接转接板(21 路关节 ADC, glove_daq_rv -U /dev/ttyS0), ★串口控制台消失★
+ *   注释掉这行   = 恢复串口控制台(fiq_debugger @1.5Mbps)
+ * 两种都要重编内核烧 boot。详见该 dtsi 头注释 + Glove 仓 RV1126B/docs/EXT_UART.md */
+#include "rv1126b-luckfox-aura-uart0-data.dtsi"

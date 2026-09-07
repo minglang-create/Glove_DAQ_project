@@ -31,6 +31,8 @@ static struct {
 static struct { double fps0, fps1, fps_pair; unsigned pair_seq; long long dpts_us; } g_cam;
 
 static const char *MODE_NAMES[] = { "hdr", "imu", "joint", "tactile", "all" };
+static char g_role[16] = "未定";
+void gv_set_role(const char *r) { snprintf(g_role, sizeof(g_role), "%s", r ? r : "未定"); }
 
 int gv_set_mode(const char *name)
 {
@@ -126,6 +128,7 @@ static void home(void)
 		g_painted = 1;
 	}
 	printf("\033[H");                      /* 光标回左上, 之后逐行 \033[K */
+	printf(" 本手套角色: 【%s】\033[K\n", g_role);   /* 顶行常驻: 主机/从机一眼可见 */
 }
 #define L "\033[K"        /* 清到行尾: 防止上一帧的长内容残留 */
 

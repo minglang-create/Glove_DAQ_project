@@ -265,6 +265,11 @@ int glove_txn_poll(uint16_t *head, uint16_t data[3])
 }
 
 /* ---------- 等 PA1 上升沿(首次电平兜底; 沿的内核时间戳供对齐引擎) ---------- */
+static void (*g_edge_cb)(void *) = NULL;
+static void *g_edge_ud = NULL;
+void glove_set_edge_cb(void (*cb)(void *), void *user) { g_edge_cb = cb; g_edge_ud = user; }
+static inline int ready(void) { if (g_edge_cb) g_edge_cb(g_edge_ud); return 0; }
+
 static int wait_ready(volatile int *quit)
 {
 	g_last_edge_ns = 0;
@@ -272,7 +277,7 @@ static int wait_ready(volatile int *quit)
 		g_first = 0;
 		int lv = gpio_level();
 		if (lv < 0) return -1;
-		if (lv == 1) return 0;
+		if (lv == 1) return ready();
 	}
 	int waited_ms = 0;
 	while (!(quit && *quit)) {
@@ -286,11 +291,11 @@ static int wait_ready(volatile int *quit)
 			/* 取最后一个沿的内核时间戳(积压时用最新的, 它对应我们将读的帧) */
 			int cnt = (int)(n / sizeof(ev[0]));
 			if (cnt > 0) g_last_edge_ns = ev[cnt - 1].timestamp_ns;
-			return 0;
+			return ready();               /* 沿到: 先触发外接设备, 再回去做 SPI */
 		}
 		waited_ms += 200;
 		if (waited_ms % 1000 == 0) {
-			if (gpio_level() == 1) return 0;
+			if (gpio_level() == 1) return ready();
 			printf("[glove] 等 PA1… 已 %ds (未开采? STM32/XVS 未跑?)\n", waited_ms / 1000);
 			fflush(stdout);
 		}

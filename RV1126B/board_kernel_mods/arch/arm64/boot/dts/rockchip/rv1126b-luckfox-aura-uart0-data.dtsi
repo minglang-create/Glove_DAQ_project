@@ -1,0 +1,30 @@
+/* =============================================================================
+ * rv1126b-luckfox-aura-uart0-data.dtsi —— 把 UART0(调试串口座 RVDB, SoM 球 A3=TX/A4=RX)
+ * 从"内核控制台"改为"普通串口 /dev/ttyS0", 供 glove_daq_rv -U 接外接转接板 STM32
+ * (21 路关节 ADC, 460800 8N1, 方案一: PA1 沿发 0x00 触发 → 对端回 46B 帧)。
+ *
+ * 【代价】串口控制台没了(u-boot/内核/登录都不再走这个口), 调试只剩 adb。
+ * 【切换】主 dts 里 #include 本文件 = 数据口; 注释掉 = 恢复控制台。改完重编内核烧 boot。
+ * 【为什么连 earlycon 也去掉】开机若还在 TX 上喷日志, 对端 GPIO 会看到成千上万个"下降沿";
+ *   对端固件有"安静 ≥10ms 后的单脉冲才算触发"的门限兜底, 但源头不喷更干净。
+ *   注意 u-boot 自身的串口输出不归内核管(仍会喷一小段), 靠对端门限过滤。
+ * ============================================================================= */
+
+/* 1) 关掉 FIQ 调试器(它独占 UART0, 开着就打不开 /dev/ttyS0) */
+&fiq_debugger {
+	status = "disabled";
+};
+
+/* 2) 打开 UART0 普通串口驱动, 引脚复用 m0 = GPIO2_A0(TX)/GPIO2_A1(RX) = 控制台原来用的那组 */
+&uart0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart0m0_xfer_pins>;
+	status = "okay";
+};
+
+/* 3) 覆盖 bootargs: 去掉 console=ttyFIQ0 与 earlycon(其余与主 dts 逐字一致) */
+/ {
+	chosen {
+		bootargs = "rw root=PARTUUID=614e0000-0000 rootfstype=ext4 rootwait snd_soc_core.prealloc_buffer_size_kbytes=16 coherent_pool=32K";
+	};
+};

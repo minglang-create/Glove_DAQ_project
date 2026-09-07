@@ -19,6 +19,9 @@ typedef struct {
 	int verify_fake;       /* -V 假数据逐帧验收 */
 	const char *rec_dir;   /* 落盘基目录(NULL=不落盘) */
 	rec_cfg_t   rec;       /* fsync 间隔/切段时长/空间阈值 */
+	const char *ext_dev;   /* -U 外接关节 ADC 串口(NULL=不启用) */
+	int         ext_baud;
+	int         ext_trig;  /* 1=trig 方案一, 0=free 方案二 */
 	cam_cfg_t   cam;
 } fsm_cfg_t;
 

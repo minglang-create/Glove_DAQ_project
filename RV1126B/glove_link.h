@@ -160,6 +160,10 @@ const glove_stats_t *glove_stats(void);
 void glove_stats_reset(void);
 const char *glove_err_str(uint32_t err);
 
+/* PA1 就绪回调: 在 glove_read_frame 检测到 PA1 沿/电平就绪、【发起 SPI 事务之前】被调
+ * (FSM 线程内)。用途: 让外接设备的触发与 PA1 对齐(见 ext_uart.h), 不吃 SPI 的 4.3ms。 */
+void glove_set_edge_cb(void (*cb)(void *user), void *user);
+
 /* 兼容旧 CLI(-C): head!=0 时等价于 glove_queue_pkt(head, NULL) */
 void glove_set_cmd(uint16_t head);
 

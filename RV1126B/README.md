@@ -28,6 +28,7 @@ adb shell /oem/usr/bin/glove_daq_rv          # 正式流程(按键触发)
 | `-w imu` / `joint` / `tactile` / `all` | 终端可视化视图 |
 | `-A` | 台架直通(STM32 AUTOSTART=1 时) |
 | `-o <dir>` | 落盘基目录(默认 `/mnt/sd/daq`,即 SD 卡;`none`=不落盘) |
+| `-U <dev>[:baud][:trig\|free]` | 外接转接板 21 路关节 ADC 串口(默认不启用)。例 `-U /dev/ttyS0:460800:trig`,**需 dts 变体让出 UART0**,见 [docs/EXT_UART.md](docs/EXT_UART.md) |
 | `-F <sec>` / `-T <min>` / `-M <gb>` | fsync 间隔(5)/自动切段(10 分钟)/SD 剩余空间阈值(2GB;`-M 0`=不检查存储,允许落 eMMC 调试) |
 | `-G c:l` / `-K c:l` | PA1 / 按键 GPIO(默认 `0:4` / `0:0`) |
 
@@ -43,6 +44,7 @@ daq_fsm.{c,h}       生命周期状态机: 自检→主从分配→启相机→�
 glove_link.{c,h}    SPI 事务层: 恒定 2690B 全双工 / 小包 / 数据帧 / CRC-16 ARC / PA1 握手
 cam_pipeline.{c,h}  双 IMX415 采集管线(ISP→VI→VENC H.265→时间戳配对), dual_cam 血统
 align.{c,h}         相机帧 ↔ CYCLE 自动标定(PA1 沿内核时间戳锚定 + 中位数 offset)
+ext_uart.{c,h}      外接转接板 21 路关节 ADC(UART0, PA1 沿发 0x00 触发一问一答), 见 docs/EXT_UART.md
 recorder.{c,h}      SD 卡分段落盘: 热路径只 fwrite 进页缓存; flush 线程做 fsync/切段/查空间
                     (exFAT 必须周期 fsync 否则拔卡后文件大小不对); 卡不在/空间不足 = 自检失败
 glove_view.{c,h}    终端可视化

@@ -22,6 +22,7 @@ int  gv_set_mode(const char *name);
 int  gv_is_mode_name(const char *s);   /* 1 = 这是个视图名(用于参数纠错提示) */
 const char *gv_mode_name(void);
 void gv_set_hz(int hz);           /* 重绘频率, 默认 15 */
+void gv_set_role(const char *role); /* "主机"/"从机": 显示在每个视图顶行 */
 
 /* 每收到一帧调一次(含坏帧, err 是 GLV_ERR_* 位或)。
  * 内部自己限速重绘, 调用方不用管节奏。hdr 模式下本函数只累积不打印。 */

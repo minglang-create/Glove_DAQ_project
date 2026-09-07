@@ -6,6 +6,8 @@
  *                           off0,len0,off1,len1  (off=本段码流文件内字节偏移)
  *     glove.bin             原始 2690B 数据帧顺序追加
  *     glove.csv             cycle,edge_ns,off  (off=本段 glove.bin 内偏移)
+ *     ext_joints.csv        cycle,seq,valid,latency_us,ch0..ch20  (外接 21 路关节 ADC,
+ *                           -U 启用时才有内容; valid=0 表示本拍缺失, latency 见 ext_uart.h)
  *   段的产生: ①每次进入 RUNNING 开新段  ②运行中每 rotate_min 分钟自动切段
  *   跨段联结靠 cycle(全局单调), 段只是"文件容器", 对上位机无语义。
  *
@@ -26,6 +28,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "cam_pipeline.h"
+#include "ext_uart.h"
 
 typedef struct {
 	int    fsync_sec;      /* 周期 fsync 间隔(秒), 默认 5, 0=关 */
@@ -41,6 +44,7 @@ int  rec_open(const char *base_dir, const rec_cfg_t *cfg);   /* 建基目录+起
 int  rec_segment_start(void);                                /* 进入 RUNNING 时调 */
 void rec_on_pair(const cam_pair_t *p, int calib_ok, uint32_t cycle, int64_t residual_us);
 void rec_on_glove(const uint8_t *raw2690, uint32_t cycle, uint64_t edge_ns);
+void rec_on_ext(uint32_t cycle, const ext_frame_t *f);      /* FSM 线程, 紧跟 rec_on_glove */
 void rec_segment_stop(void);                                 /* 暂停/结束时调(含 fsync) */
 void rec_close(void);                                        /* 停 flush 线程 */
 

@@ -14,7 +14,8 @@
 
 /* ---------- 受 g_mtx 保护的状态(热路径与 flush 线程共享) ---------- */
 static pthread_mutex_t g_mtx = PTHREAD_MUTEX_INITIALIZER;
-static FILE    *g_f[5];                   /* 0:cam0 1:cam1 2:pairs.csv 3:glove.bin 4:glove.csv */
+#define NF 6
+static FILE    *g_f[NF];                  /* 0:cam0 1:cam1 2:pairs.csv 3:glove.bin 4:glove.csv 5:ext_joints.csv */
 static uint64_t g_off[2], g_goff;
 static int      g_active = 0;
 static unsigned g_seg = 0;                /* 已开过的段数 */
@@ -86,32 +87,35 @@ int rec_check_storage(const char *base, double min_free_gb, char *why, size_t wl
 }
 
 /* ================= 段文件开/关(不持锁, 慢操作) ================= */
-static int open_seg_files(unsigned seg, FILE *out[5], char *dir, size_t dl)
+static int open_seg_files(unsigned seg, FILE *out[NF], char *dir, size_t dl)
 {
 	struct timespec t; clock_gettime(CLOCK_BOOTTIME, &t);
 	snprintf(dir, dl, "%s/seg_%03u_%ld", g_base, seg, (long)t.tv_sec);
 	if (mkdir(dir, 0755) != 0) { printf("[rec] 建段目录失败 %s\n", dir); return -1; }
-	static const char *names[5] = { "cam0.h265", "cam1.h265", "pairs.csv", "glove.bin", "glove.csv" };
-	static const char *modes[5] = { "wb", "wb", "w", "wb", "w" };
+	static const char *names[NF] = { "cam0.h265", "cam1.h265", "pairs.csv", "glove.bin", "glove.csv", "ext_joints.csv" };
+	static const char *modes[NF] = { "wb", "wb", "w", "wb", "w", "w" };
 	char p[400]; int ok = 1;
-	for (int i = 0; i < 5; i++) {
+	for (int i = 0; i < NF; i++) {
 		snprintf(p, sizeof(p), "%s/%s", dir, names[i]);
 		out[i] = fopen(p, modes[i]);
 		if (!out[i]) ok = 0;
 	}
 	if (!ok) {
-		for (int i = 0; i < 5; i++) if (out[i]) { fclose(out[i]); out[i] = NULL; }
+		for (int i = 0; i < NF; i++) if (out[i]) { fclose(out[i]); out[i] = NULL; }
 		printf("[rec] 段文件打开失败 %s\n", dir); return -1;
 	}
 	fprintf(out[2], "pair_seq,seq0,seq1,pts0,pts1,dpts_us,cycle,residual_us,off0,len0,off1,len1\n");
 	fprintf(out[4], "cycle,edge_ns,off\n");
+	fprintf(out[5], "cycle,seq,valid,latency_us");
+	for (int i = 0; i < EXT_NCH; i++) fprintf(out[5], ",ch%d", i);
+	fprintf(out[5], "\n");
 	return 0;
 }
 
 /* fflush → fsync → fclose。fsync 让 exFAT 把文件大小写进目录项(拔卡后文件才完整可见) */
-static void close_files(FILE *f[5])
+static void close_files(FILE *f[NF])
 {
-	for (int i = 0; i < 5; i++) {
+	for (int i = 0; i < NF; i++) {
 		if (!f[i]) continue;
 		fflush(f[i]);
 		fsync(fileno(f[i]));
@@ -140,6 +144,18 @@ void rec_on_pair(const cam_pair_t *p, int calib_ok, uint32_t cycle, int64_t resi
 	pthread_mutex_unlock(&g_mtx);
 }
 
+void rec_on_ext(uint32_t cycle, const ext_frame_t *f)
+{
+	pthread_mutex_lock(&g_mtx);
+	if (g_active) {
+		fprintf(g_f[5], "%u,%u,%d,%lld", cycle, f->seq, f->valid, (long long)f->latency_us);
+		for (int i = 0; i < EXT_NCH; i++)
+			fprintf(g_f[5], f->valid ? ",%u" : ",", f->ch[i]);    /* 缺失拍: 通道列留空 */
+		fputc('\n', g_f[5]);
+	}
+	pthread_mutex_unlock(&g_mtx);
+}
+
 void rec_on_glove(const uint8_t *raw, uint32_t cycle, uint64_t edge_ns)
 {
 	pthread_mutex_lock(&g_mtx);
@@ -156,7 +172,7 @@ void rec_on_glove(const uint8_t *raw, uint32_t cycle, uint64_t edge_ns)
 int rec_segment_start(void)
 {
 	if (rec_active()) rec_segment_stop();
-	FILE *nf[5] = {0}; char dir[400];
+	FILE *nf[NF] = {0}; char dir[400];
 	pthread_mutex_lock(&g_mtx);
 	unsigned seg = ++g_seg;
 	pthread_mutex_unlock(&g_mtx);
@@ -173,7 +189,7 @@ int rec_segment_start(void)
 
 void rec_segment_stop(void)
 {
-	FILE *old[5];
+	FILE *old[NF];
 	pthread_mutex_lock(&g_mtx);
 	if (!g_active) { pthread_mutex_unlock(&g_mtx); return; }
 	g_active = 0;                          /* 先置 0: 热路径立刻停写 */
@@ -187,10 +203,10 @@ void rec_segment_stop(void)
 /* ================= flush 线程: fsync / 切段 / 查空间 ================= */
 static void do_fsync(void)
 {
-	int fds[5]; int n = 0;
+	int fds[NF]; int n = 0;
 	pthread_mutex_lock(&g_mtx);
 	if (g_active)
-		for (int i = 0; i < 5; i++) {
+		for (int i = 0; i < NF; i++) {
 			fflush(g_f[i]);                 /* libc 缓冲 → 页缓存(快) */
 			fds[n++] = dup(fileno(g_f[i])); /* dup: 即使随后被 fclose, 副本 fd 仍有效 */
 		}
@@ -202,7 +218,7 @@ static void do_fsync(void)
 
 static void do_rotate(void)
 {
-	FILE *nf[5] = {0}, *old[5]; char dir[400];
+	FILE *nf[NF] = {0}, *old[NF]; char dir[400];
 	pthread_mutex_lock(&g_mtx);
 	if (!g_active) { pthread_mutex_unlock(&g_mtx); return; }
 	unsigned seg = g_seg + 1;
@@ -213,7 +229,7 @@ static void do_rotate(void)
 	pthread_mutex_lock(&g_mtx);
 	if (!g_active) {                       /* 开文件期间 FSM 已停段 → 放弃新段 */
 		pthread_mutex_unlock(&g_mtx);
-		for (int i = 0; i < 5; i++) if (nf[i]) fclose(nf[i]);
+		for (int i = 0; i < NF; i++) if (nf[i]) fclose(nf[i]);
 		rmdir(dir);
 		return;
 	}

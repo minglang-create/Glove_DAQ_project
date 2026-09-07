@@ -6,4 +6,4 @@ TARGET := glove_daq_rv
 APP_PARAM := ../../Makefile.param
 include $(APP_PARAM)
 include ../../cam_daq/common.mk
-SRCS := main.c daq_fsm.c glove_link.c glove_view.c cam_pipeline.c align.c recorder.c button.c
+SRCS := main.c daq_fsm.c glove_link.c glove_view.c cam_pipeline.c align.c recorder.c ext_uart.c button.c

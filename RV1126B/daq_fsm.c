@@ -8,6 +8,7 @@
 #include "glove_view.h"
 #include "align.h"
 #include "recorder.h"
+#include "ext_uart.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -52,6 +53,7 @@ static int poll_dispatch(int *role, int *hands)
 		break;
 	case GLV_PKT_IAM_SLAVE:
 		printf("[fsm] 本手套被判为【从机】(对侧已上任主机), 回 ACK\n");
+		gv_set_role("从机");
 		glove_queue_pkt(GLV_PKT_ACK, NULL);
 		break;
 	case GLV_PKT_ACK: {
@@ -96,6 +98,12 @@ int fsm_run(const fsm_cfg_t *cfg)
 
 	/* ============ SELFCHECK(契约 1.1: 只探相机在位, 不启动) ============ */
 	printf("══════ 自检 ══════\n");
+	if (cfg->ext_dev) {
+		if (ext_uart_open(cfg->ext_dev, cfg->ext_baud, cfg->ext_trig) == 0)
+			glove_set_edge_cb(ext_uart_on_edge, NULL);   /* PA1 沿 → 触发对端(SPI 之前) */
+		else
+			printf("[fsm] ★外接串口打不开, 本次无外接关节数据★(控制台是否已让出 UART0? 见 dts 变体)\n");
+	}
 	if (!cfg->no_cam) {
 		int n = cam_probe_i2c();
 		printf("[fsm] 相机在位: %d/2 %s\n", n, n == 2 ? "✓" : "★缺相机, 继续跑但记录在案★");
@@ -170,6 +178,7 @@ int fsm_run(const fsm_cfg_t *cfg)
 				break;
 			}
 			if (go) {
+				gv_set_role(role == 1 ? "主机" : "从机");
 				printf("[fsm] 0xC301 开采请求: 角色=%s 模式=%s → 启动相机"
 				       "(cam0=主机, 起振即向全系统发 XVS+XHS)\n",
 				       role == 1 ? "主机" : "从机", hands == 1 ? "双手" : "单手");
@@ -249,6 +258,10 @@ int fsm_run(const fsm_cfg_t *cfg)
 			if (err == 0 || !(err & (GLV_ERR_MAGIC | GLV_ERR_LENGTH | GLV_ERR_CRC))) {
 				align_on_glove(f.cycle, f.t_edge_ns);
 				rec_on_glove(raw, f.cycle, f.t_edge_ns);
+				if (ext_uart_enabled()) {          /* 本拍的外接 21 路关节(trig: 等回帧≤10ms) */
+					ext_frame_t ef; ext_uart_get_last(&ef);
+					rec_on_ext(f.cycle, &ef);
+				}
 				gv_on_frame(&f, (uint32_t)err, glove_stats());
 				if (cfg->verify_fake) {
 					glove_check_t ck;
@@ -277,6 +290,14 @@ int fsm_run(const fsm_cfg_t *cfg)
 				       slips ? " ★有滑移★" : "");
 				if (cfg->rec_dir)
 					printf("       [盘] 剩余 %.1fGB, 已开 %u 段\n", rec_free_gb(), rec_segment_count());
+				if (ext_uart_enabled()) {
+					const ext_stats_t *e = ext_uart_stats();
+					printf("       [外接] 触发%llu 收%llu 缺%llu 迟弃%llu xor错%llu 重同步%llu 序号跳%llu 延时avg=%.2fms max=%.2fms\n",
+					       (unsigned long long)e->trig_sent, (unsigned long long)e->frames_ok,
+					       (unsigned long long)e->missing, (unsigned long long)e->late_drop,
+					       (unsigned long long)e->xor_err, (unsigned long long)e->resync,
+					       (unsigned long long)e->seq_gap, e->lat_avg_us / 1000.0, e->lat_max_us / 1000.0);
+				}
 			}
 			break;
 		}
@@ -305,6 +326,7 @@ int fsm_run(const fsm_cfg_t *cfg)
 	/* ============ SHUTDOWN ============ */
 	printf("══════ 收尾 ══════\n");
 	rec_close();
+	ext_uart_close();
 	if (cam_on) cam_stop();
 	gv_finish();
 	const glove_stats_t *s = glove_stats();

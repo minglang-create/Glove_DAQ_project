@@ -15,6 +15,8 @@
  *   -F <sec>     周期 fsync 间隔    默认 5 (0=关; exFAT 不 fsync 拔卡会丢文件大小)
  *   -T <min>     按时间自动切段     默认 10 (0=关; 损伤隔离+可边录边拉)
  *   -M <gb>      SD 剩余空间阈值    默认 2.0 (0=不检查存储, 允许落 eMMC 调试)
+ *   -U <dev>[:baud][:trig|free]  外接转接板 21 路关节 ADC 串口(默认不启用)
+ *                例: -U /dev/ttyS0:460800:trig   ★需 dts 变体让出 UART0(控制台)★
  *   -w <view>    视图 hdr/imu/joint/tactile/all(默认 hdr)   -r <hz> 重绘率
  *   -V           STM32 假数据逐帧验收
  *   -A           台架直通(STM32 AUTOSTART=1 时: 见数据帧即启相机开跑)
@@ -60,7 +62,7 @@ int main(int argc, char *argv[])
 	g_argv = argv;
 
 	int ch, a, b;
-	while ((ch = getopt(argc, argv, "D:S:G:K:o:w:r:W:H:b:F:T:M:VAXh")) != -1) {
+	while ((ch = getopt(argc, argv, "D:S:G:K:o:w:r:W:H:b:F:T:M:U:VAXh")) != -1) {
 		switch (ch) {
 		case 'D': spidev = optarg; break;
 		case 'S': hz = (uint32_t)strtoul(optarg, NULL, 0); break;
@@ -72,6 +74,13 @@ int main(int argc, char *argv[])
 		case 'W': cfg.cam.width = atoi(optarg); break;
 		case 'H': cfg.cam.height = atoi(optarg); break;
 		case 'b': cfg.cam.bitrate_kbps = atoi(optarg); break;
+		case 'U': {
+			static char ubuf[128]; snprintf(ubuf, sizeof(ubuf), "%s", optarg);
+			char *dev = strtok(ubuf, ":"), *bd = strtok(NULL, ":"), *md = strtok(NULL, ":");
+			cfg.ext_dev = dev; cfg.ext_baud = bd ? atoi(bd) : 460800;
+			cfg.ext_trig = (md && strcmp(md, "free") == 0) ? 0 : 1;
+			break;
+		}
 		case 'F': cfg.rec.fsync_sec = atoi(optarg); break;
 		case 'T': cfg.rec.rotate_min = atoi(optarg); break;
 		case 'M': cfg.rec.min_free_gb = atof(optarg); break;
