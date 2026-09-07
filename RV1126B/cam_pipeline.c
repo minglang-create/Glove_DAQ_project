@@ -417,10 +417,9 @@ static void fps_tick(struct timespec *last, uint32_t *cnt, const char *label) {
 	double el = (now.tv_sec - last->tv_sec) + (now.tv_nsec - last->tv_nsec) / 1e9;
 	if (el >= 1.0) {                 /* 满 1 秒才算一次, 避免抖动 */
 		double fps = (double)*cnt / el;
-		/* 视图模式(-w imu 等)下屏幕由视图独占: 这里只交数据不打印,
-		 * 否则滚动输出会把原地刷屏的画面顶乱、留下残片。 */
-		if (gv_active()) gv_cam_fps(label, fps);
-		else             printf("[fps] %-12s %.1f\n", label, fps);
+		/* 只交数据不打印: FSM 每秒的状态行会把三路 fps 合成一行输出(减少刷屏);
+		 * 视图模式下由视图页脚显示。 */
+		gv_cam_fps(label, fps);
 		*cnt = 0;
 		*last = now;
 	}

@@ -62,7 +62,7 @@ int btn_start(int chip, int line, btn_cb cb, void *user)
 	close(cfd);
 	g_fd = req.fd; g_cb = cb; g_user = user; g_quit = 0;
 	pthread_create(&g_tid, NULL, btn_thread, NULL);
-	printf("[btn] 按键就绪 gpiochip%d:%d(低有效, 采集中长按%dms=暂停并落盘)\n", chip, line, LONG_MS);
+	printf("[btn] 按键就绪 gpiochip%d:%d(低有效, 长按%dms=落盘并重新自检)\n", chip, line, LONG_MS);
 	return 0;
 }
 

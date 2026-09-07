@@ -22,8 +22,9 @@
  *   -V           STM32 假数据逐帧验收
  *   -A           台架直通(STM32 AUTOSTART=1 时: 见数据帧即启相机开跑)
  *   -X           不碰相机(纯链路调试)
+ *   -v           相机初始化时显示 SDK 全部日志(默认收进 /tmp/cam_init.log, 只留一行摘要)
  *   -W/-H/-b     相机宽/高/码率kbps(默认 1920/1080/10240)
- * 按键: 空闲短按=开采; 采集中长按2s=暂停并落盘(之后可直接断电); 暂停后短按=重新开采(新段)
+ * 按键: 空闲短按=开采; 任何时候长按2s=落盘+0x5F01 复位 STM32+程序重启回待机(之后可断电或再短按开采)
  * 信号: USR2=模拟短按  USR1=发0x5F01重新自检并重启  INT/TERM=优雅退出
  * ============================================================================= */
 #include <stdio.h>
@@ -65,7 +66,7 @@ int main(int argc, char *argv[])
 	g_argv = argv;
 
 	int ch, a, b;
-	while ((ch = getopt(argc, argv, "D:S:G:K:o:w:r:W:H:b:F:T:M:U:VAXh")) != -1) {
+	while ((ch = getopt(argc, argv, "D:S:G:K:o:w:r:W:H:b:F:T:M:U:VAXvh")) != -1) {
 		switch (ch) {
 		case 'D': spidev = optarg; break;
 		case 'S': hz = (uint32_t)strtoul(optarg, NULL, 0); break;
@@ -91,6 +92,7 @@ int main(int argc, char *argv[])
 		case 'V': cfg.verify_fake = 1; break;
 		case 'A': cfg.auto_mode = 1; break;
 		case 'X': cfg.no_cam = 1; break;
+		case 'v': cfg.verbose = 1; break;
 		default:
 			printf("见 main.c 头注释\n");
 			return ch == 'h' ? 0 : 1;

@@ -27,6 +27,7 @@ adb shell /oem/usr/bin/glove_daq_rv          # 正式流程(按键触发)
 | `-V` | 逐帧校验 STM32 假数据(协议实现验收) |
 | `-w imu` / `joint` / `tactile` / `all` | 终端可视化视图 |
 | `-A` | 台架直通(STM32 AUTOSTART=1 时) |
+| `-v` | 相机初始化时显示 SDK 全部日志(默认收进 `/tmp/cam_init.log`,只留一行摘要) |
 | `-o <dir>` | 落盘基目录(默认 `/mnt/sd/daq`,即 SD 卡;`none`=不落盘) |
 | `-U <dev>[:baud][:trig\|free]` | 外接转接板 21 路关节 ADC 串口。**默认已启用** `/dev/ttyS0:460800:trig`;`-U none` 关闭;`:free` 切备用模式。见 [docs/EXT_UART.md](docs/EXT_UART.md) |
 | `-F <sec>` / `-T <min>` / `-M <gb>` | fsync 间隔(5)/自动切段(10 分钟)/SD 剩余空间阈值(2GB;`-M 0`=不检查存储,允许落 eMMC 调试) |

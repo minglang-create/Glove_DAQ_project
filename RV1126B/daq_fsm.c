@@ -14,7 +14,35 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <stdatomic.h>
+
+/* ---- 相机启动期间 SDK(rkaiq/rockit/mpp)会往 stdout/stderr 喷上百行内部日志, 全是库里
+ * 打的、改不掉。默认把这段时间的 fd1/fd2 临时重定向到 /tmp/cam_init.log, 成功只留一行摘要;
+ * 失败则把文件尾巴打出来。-v 可关掉重定向看全量。 ---- */
+static void tail_file(const char *path, int lines)
+{
+	FILE *f = fopen(path, "r"); if (!f) return;
+	char buf[64][256]; int n = 0, w = 0;
+	while (fgets(buf[w], sizeof(buf[w]), f)) { w = (w + 1) % 64; if (n < 64) n++; }
+	fclose(f);
+	int start = (w - (n < lines ? n : lines) + 64) % 64;
+	for (int i = 0; i < (n < lines ? n : lines); i++) fputs(buf[(start + i) % 64], stdout);
+}
+static int cam_start_quiet(const cam_cfg_t *c, int verbose)
+{
+	if (verbose) return cam_start(c);
+	fflush(stdout); fflush(stderr);
+	int so = dup(1), se = dup(2);
+	int fd = open("/tmp/cam_init.log", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+	if (fd >= 0) { dup2(fd, 1); dup2(fd, 2); close(fd); }
+	int r = cam_start(c);
+	fflush(stdout); fflush(stderr);
+	if (so >= 0) { dup2(so, 1); close(so); }
+	if (se >= 0) { dup2(se, 2); close(se); }
+	if (r != 0) { printf("[cam] ★启动失败★ /tmp/cam_init.log 末尾:\n"); tail_file("/tmp/cam_init.log", 12); }
+	return r;
+}
 
 /* ---------- 事件标志(按键线程/信号处理写, FSM 线程读) ---------- */
 static volatile int g_ev_short, g_ev_long, g_ev_recheck, g_ev_quit;
@@ -94,7 +122,7 @@ int fsm_run(const fsm_cfg_t *cfg)
 {
 	unsigned seg = 0;
 	int role = 0, hands = -1, cam_on = 0;
-	enum { ST_WAIT_READY, ST_WAIT_FRAME, ST_RUNNING, ST_PAUSED } st = ST_WAIT_READY;
+	enum { ST_WAIT_READY, ST_WAIT_FRAME, ST_RUNNING } st = ST_WAIT_READY;
 
 	/* ============ SELFCHECK(契约 1.1: 只探相机在位, 不启动) ============ */
 	printf("══════ 自检 ══════\n");
@@ -124,18 +152,24 @@ int fsm_run(const fsm_cfg_t *cfg)
 	if (storage_ok) {
 		glove_queue_pkt(GLV_PKT_RV_OK, NULL);      /* 0x5501: RV 自检完成, 尽早发 */
 		printf("[fsm] 已发 0x5501(RV 自检完成)。等待: STM32 自检包 / 按键 / 0xC301\n");
-		printf("      (短按=开采; 采集中长按2s=暂停并落盘, 之后可直接断电; kill -USR2 %d 模拟短按)\n", getpid());
+		printf("      (短按=开采; 长按2s=落盘并重新自检(复位), 之后可断电; kill -USR2 %d 模拟短按)\n", getpid());
 	}
 
 	uint64_t t_resend = now_ms(), t_frame0 = 0;
 
 	while (!g_ev_quit) {
-		/* ---------- 通用事件(按键永不退出程序; 退出只靠 INT/TERM) ---------- */
+		/* ---------- 通用事件(按键永不退出程序; 退出只靠 INT/TERM) ----------
+		 * 长按(任何状态) = 重新自检: 先把当前段收口+fsync(数据落盘), 再发 0x5F01 让 STM32 回自检,
+		 * 然后 exec 重启自己 → 回到"待机等短按"。等价于重新上电走一遍流程, 但不用断电。 */
+		if (g_ev_long) { g_ev_long = 0; g_loop_break = 0; g_ev_recheck = 1;
+			printf("[fsm] 长按 → 重新自检(复位 STM32 + 重跑流程)\n"); }
 		if (g_ev_recheck) {
-			printf("[fsm] 发 0x5F01 重新自检, 进程将重启\n");
+			rec_close();                                /* 段收口 + fsync, 返回即数据在卡上 */
+			if (cfg->rec_dir) printf("[fsm] 数据已落盘 ✓ (此刻起可断电)\n");
+			printf("[fsm] 发 0x5F01 重新自检, 程序重启回待机\n");
 			glove_queue_pkt(GLV_PKT_RECHECK, NULL);
 			uint16_t h, d[3]; glove_txn_poll(&h, d);   /* 立刻投递 */
-			rec_close(); if (cam_on) cam_stop();
+			if (cam_on) cam_stop();
 			return 2;
 		}
 
@@ -159,7 +193,6 @@ int fsm_run(const fsm_cfg_t *cfg)
 				glove_queue_pkt(GLV_PKT_RV_OK, NULL);
 				t_resend = now_ms();
 			}
-			if (g_ev_long) { g_ev_long = 0; g_loop_break = 0; }   /* 空闲时长按忽略 */
 			if (g_ev_short) {
 				g_ev_short = 0; g_loop_break = 0;
 				printf("[fsm] 短按 → 发 0x5101(宣告本手套为主机, 开采)\n");
@@ -183,7 +216,7 @@ int fsm_run(const fsm_cfg_t *cfg)
 				       "(cam0=主机, 起振即向全系统发 XVS+XHS)\n",
 				       role == 1 ? "主机" : "从机", hands == 1 ? "双手" : "单手");
 				if (!cfg->no_cam) {
-					if (cam_start(&cfg->cam) != 0) {
+					if (cam_start_quiet(&cfg->cam, cfg->verbose) != 0) {
 						cam_stop();          /* ★清干净半初始化的 ISP/VI, 否则重试更乱★ */
 						printf("[fsm] ★相机启动失败★(常见: /dev/mpi 未加载 → 先 insmod_ko.sh)\n");
 						printf("      冷却 3s 后可重试; 或 kill -USR1 发 0x5F01 重来\n");
@@ -194,6 +227,9 @@ int fsm_run(const fsm_cfg_t *cfg)
 						break;
 					}
 					cam_on = 1;
+					printf("[cam] 双摄已启动: %s, %dx%d@60 H.265 %dkbps (SDK 初始化日志 → /tmp/cam_init.log, -v 直接显示)\n",
+					       cam_hw_sync_ok() ? "硬同步 cam0主/cam1从" : "★软同步(未探到硬同步)★",
+					       cfg->cam.width, cfg->cam.height, cfg->cam.bitrate_kbps);
 				}
 				glove_queue_pkt(GLV_PKT_START, NULL);  /* 0xC101 = 相机就绪回执 */
 				t_frame0 = now_ms();
@@ -230,24 +266,15 @@ int fsm_run(const fsm_cfg_t *cfg)
 			static uint8_t raw[GLV_FRAME_LEN];
 			static glove_frame_t f;
 			static uint64_t t_stat = 0;
-			if (cfg->rec_dir && rec_space_low()) {   /* flush 线程报空间不足 → 等同长按: 暂停并落盘 */
-				printf("[fsm] ★SD 卡空间不足, 暂停采集并落盘★(换卡后重新上电)\n");
-				g_ev_long = 1; g_loop_break = 1;
+			if (cfg->rec_dir && rec_space_low()) {   /* flush 线程报空间不足 → 等同长按: 落盘并重新自检 */
+				printf("[fsm] ★SD 卡空间不足★ 落盘并重新自检(换卡后自检才会通过)\n");
+				g_ev_recheck = 1; g_loop_break = 1;
 			}
 			g_loop_break = 0;
 			int err = glove_read_frame(&f, raw, &g_loop_break);
 			if (err < 0) {                       /* 被事件打断或底层错 */
 				if (g_ev_short) g_ev_short = 0;   /* 采集中短按: 忽略(防误触) */
-				if (g_ev_long) {
-					g_ev_long = 0;
-					printf("[fsm] 长按 → 暂停(0xC201, XVS 不停); 段收口并 fsync, 之后可直接断电\n");
-					glove_queue_pkt(GLV_PKT_STOP, NULL);
-					uint16_t h, d[3]; glove_txn_poll(&h, d);   /* 立即投递 */
-					rec_segment_stop();               /* 内含 fsync: 返回即数据在卡上 */
-					printf("[fsm] 数据已落盘 ✓ (短按=重新开采, 新开一段)\n");
-					st = ST_PAUSED;
-				}
-				break;                           /* 退出/recheck 由循环头处理 */
+				break;                           /* 长按/退出/recheck 由循环头处理 */
 			}
 			if (err & GLV_ERR_MAGIC) {         /* 尸检: 前5个坏帧打头部 */
 				static int autop = 0;
@@ -292,6 +319,11 @@ int fsm_run(const fsm_cfg_t *cfg)
 				       (unsigned long long)s->pa1_backlog,
 				       locked ? "已标定" : "标定中", off_ms, std_us, n, drift,
 				       slips ? " ★有滑移★" : "");
+				if (!cfg->no_cam) {
+					double f0, f1, fp; long long dp;
+					gv_cam_get(&f0, &f1, &fp, &dp);
+					printf("       [相机] cam0 %.1f cam1 %.1f 成对 %.1f fps  dpts %+lld µs\n", f0, f1, fp, dp);
+				}
 				if (cfg->rec_dir)
 					printf("       [盘] 剩余 %.1fGB, 已开 %u 段\n", rec_free_gb(), rec_segment_count());
 				if (ext_uart_enabled()) {
@@ -306,25 +338,6 @@ int fsm_run(const fsm_cfg_t *cfg)
 			break;
 		}
 
-		/* ============ 暂停(已落盘, 可断电): 短按=重新开采 ============ */
-		case ST_PAUSED: {
-			int r = poll_dispatch(NULL, NULL);
-			if (g_ev_long) { g_ev_long = 0; g_loop_break = 0; }   /* 已暂停, 再长按忽略 */
-			if (g_ev_short) {
-				g_ev_short = 0; g_loop_break = 0;
-				printf("[fsm] 短按 → 重新开采(0xC101)\n");
-				glove_queue_pkt(GLV_PKT_START, NULL);
-			}
-			if (r == 2) {                        /* 数据帧回来了 = 重新开采成功 */
-				seg++;
-				if (cfg->rec_dir) rec_segment_start();
-				printf("══════ RUNNING(段 %u, 重新开采) ══════\n", seg);
-				st = ST_RUNNING;                 /* 对齐不重标: XVS 没停, 网格没变 */
-			} else {
-				usleep(200 * 1000);
-			}
-			break;
-		}
 		}
 	}
 

@@ -56,6 +56,11 @@ void gv_cam_fps(const char *label, double fps)
 	else if (strstr(label, "cam1")) g_cam.fps1 = fps;
 	else                            g_cam.fps_pair = fps;
 }
+void gv_cam_get(double *f0, double *f1, double *fp, long long *dp)
+{
+	if (f0) *f0 = g_cam.fps0; if (f1) *f1 = g_cam.fps1;
+	if (fp) *fp = g_cam.fps_pair; if (dp) *dp = g_cam.dpts_us;
+}
 void gv_cam_pair(unsigned pair_seq, long long dpts_us)
 {
 	g_cam.pair_seq = pair_seq;

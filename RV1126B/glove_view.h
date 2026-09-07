@@ -31,6 +31,7 @@ void gv_on_frame(const glove_frame_t *f, uint32_t err, const glove_stats_t *st);
 /* ---- 视图模式下相机侧不再自己打印, 把统计交给视图统一渲染(避免刷屏被顶乱) ---- */
 void gv_cam_fps(const char *label, double fps);        /* 各路实时帧率 */
 void gv_cam_pair(unsigned pair_seq, long long dpts_us);/* 每配成一对帧 */
+void gv_cam_get(double *fps0, double *fps1, double *fps_pair, long long *dpts_us); /* 供状态行读取 */
 int  gv_active(void);                                  /* 1 = 当前是刷屏视图(非 hdr) */
 
 /* 退出时恢复终端(显示光标等) */
