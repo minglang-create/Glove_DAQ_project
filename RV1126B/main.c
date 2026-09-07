@@ -33,6 +33,8 @@
 #include <signal.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <dirent.h>
+#include <fcntl.h>
 
 #include "glove_link.h"
 #include "glove_view.h"
@@ -63,6 +65,7 @@ int main(int argc, char *argv[])
 	memset(&cfg, 0, sizeof(cfg));
 	cfg.rec.fsync_sec = 5; cfg.rec.rotate_min = 10; cfg.rec.min_free_gb = 2.0;   /* SD 落盘默认 */
 	cfg.ext_dev = "/dev/ttyS0"; cfg.ext_baud = 460800; cfg.ext_trig = 1;         /* 外接 ADC 串口默认开(2026-09-07) */
+	cfg.cam.width = 1920; cfg.cam.height = 1080; cfg.cam.bitrate_kbps = 10240;  /* 相机默认(与 cam_pipeline 一致) */
 	g_argv = argv;
 
 	int ch, a, b;
@@ -123,7 +126,25 @@ int main(int argc, char *argv[])
 	btn_stop();
 	glove_close();
 	if (rc == 2) {                          /* 0x5F01 → 干净地重启自己(全新自检) */
-		printf("== 重新自检: exec 重启 ==\n");
+		/* ★关键★ rkaiq/rockit/mpp 自己 open 的设备 fd(/dev/video*, /dev/mpi/*, dma-buf…)没有
+		 * CLOEXEC, 会原样泄漏进 exec 后的新进程 → 内核认为 ISP/VI/VENC 仍被持有 → 第二次
+		 * cam_start 在半占用状态上初始化 → rkaiq 段错误(实测: 长按重新自检后再开采即崩)。
+		 * 这里给所有 fd 打上 CLOEXEC, 由内核在 exec 那一刻原子回收(不直接 close: 库线程可能
+		 * 还在用, 标记比关闭安全); 新进程走完自检+握手再开相机, 中间几秒足够设备释放干净。 */
+		DIR *d = opendir("/proc/self/fd");
+		if (d) {
+			struct dirent *e; int dfd = dirfd(d), n = 0;
+			while ((e = readdir(d))) {
+				int fd = atoi(e->d_name);
+				if (fd > 2 && fd != dfd && fcntl(fd, F_SETFD, FD_CLOEXEC) == 0) n++;
+			}
+			closedir(d);
+			printf("== 重新自检: 已标记 %d 个 fd 随 exec 关闭, 重启 ==\n", n);
+		} else {
+			printf("== 重新自检: exec 重启 ==\n");
+		}
+		fflush(stdout); fflush(stderr);
+		usleep(200 * 1000);                  /* 让 cam_stop 的异步收尾再落一落 */
 		execv("/proc/self/exe", g_argv);
 		perror("execv");
 	}

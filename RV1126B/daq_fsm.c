@@ -170,6 +170,7 @@ int fsm_run(const fsm_cfg_t *cfg)
 			glove_queue_pkt(GLV_PKT_RECHECK, NULL);
 			uint16_t h, d[3]; glove_txn_poll(&h, d);   /* 立刻投递 */
 			if (cam_on) cam_stop();
+			ext_uart_close();
 			return 2;
 		}
 
