@@ -36,6 +36,8 @@ adb shell /oem/usr/bin/glove_daq_rv          # 正式流程(按键触发)
 机制与出固件流程(含一个必踩的 SDK 坑)见 [AUTOSTART.md](AUTOSTART.md)。
 调试时不想让它自启:`touch /userdata/glove_noauto && reboot`。
 
+**数据格式与验收工具**:[docs/DATA_FORMAT.md](docs/DATA_FORMAT.md)、`../tools/daq_check.py`(PC 端,纯 Python 标准库)
+
 ## 目录结构
 
 ```

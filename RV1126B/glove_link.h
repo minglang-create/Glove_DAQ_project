@@ -131,6 +131,7 @@ typedef struct {
 	uint64_t all_zero;            /* MISO 全 0(从机没装包, 非错误) */
 	uint64_t small_pkts;          /* 读到小包的次数 */
 	uint64_t torn;
+	uint64_t pa1_backlog;         /* 一次 read 到 >1 个 PA1 沿时多出的沿数: >0 = RV 线程曾卡住漏拍(区别于 STM32 没拉 PA1) */
 	uint64_t cycle_gap_ev, cycle_dropped, cycle_dup;
 	uint64_t pattern_err;
 	uint32_t first_cycle, last_cycle;

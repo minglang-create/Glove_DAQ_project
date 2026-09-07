@@ -291,6 +291,7 @@ static int wait_ready(volatile int *quit)
 			/* 取最后一个沿的内核时间戳(积压时用最新的, 它对应我们将读的帧) */
 			int cnt = (int)(n / sizeof(ev[0]));
 			if (cnt > 0) g_last_edge_ns = ev[cnt - 1].timestamp_ns;
+			if (cnt > 1) g_st.pa1_backlog += (uint64_t)(cnt - 1);   /* 积压 = 我们来晚了 */
 			return ready();               /* 沿到: 先触发外接设备, 再回去做 SPI */
 		}
 		waited_ms += 200;

@@ -255,7 +255,9 @@ int fsm_run(const fsm_cfg_t *cfg)
 					       raw[0], raw[1], raw[2], raw[3], raw[4], raw[5], raw[6], raw[7],
 					       f.t_edge_ns ? "有(沿触发)" : "无(电平兜底=PA1没在动)");
 			}
-			if (err == 0 || !(err & (GLV_ERR_MAGIC | GLV_ERR_LENGTH | GLV_ERR_CRC))) {
+			/* 只有真数据帧才记录/对齐: 排除 magic/长度/CRC 错, ★也排除"合法小包"★——
+			 * 采集收尾时 STM32 回自检态会装 0x5401 小包, 曾被当数据帧记下(cycle 字段=位图 0x0DFFFFFF)。 */
+			if (err == 0 || !(err & (GLV_ERR_MAGIC | GLV_ERR_LENGTH | GLV_ERR_CRC | GLV_ERR_SMALLPKT))) {
 				align_on_glove(f.cycle, f.t_edge_ns);
 				rec_on_glove(raw, f.cycle, f.t_edge_ns);
 				if (ext_uart_enabled()) {          /* 本拍的外接 21 路关节(trig: 等回帧≤10ms) */
@@ -277,7 +279,7 @@ int fsm_run(const fsm_cfg_t *cfg)
 				double off_ms, std_us, drift; uint32_t n, slips;
 				int locked = align_status(&off_ms, &std_us, &n, &drift, &slips);
 				printf("[手套] %.1fHz 有效%llu/%llu cycle=%u 丢%llu crc错%llu "
-				       "空帧%llu magic错%llu 小包%llu | [对齐] %s offset=%.2fms σ=%.0fµs "
+				       "空帧%llu magic错%llu 小包%llu PA1积压%llu | [对齐] %s offset=%.2fms σ=%.0fµs "
 				       "n=%u 漂移%+.1fµs/s%s\n",
 				       s->rate_hz, (unsigned long long)s->ok,
 				       (unsigned long long)s->reads, s->last_cycle,
@@ -286,6 +288,7 @@ int fsm_run(const fsm_cfg_t *cfg)
 				       (unsigned long long)s->all_zero,
 				       (unsigned long long)s->magic_err,
 				       (unsigned long long)s->small_pkts,
+				       (unsigned long long)s->pa1_backlog,
 				       locked ? "已标定" : "标定中", off_ms, std_us, n, drift,
 				       slips ? " ★有滑移★" : "");
 				if (cfg->rec_dir)

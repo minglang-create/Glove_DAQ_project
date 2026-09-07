@@ -125,7 +125,9 @@ int align_lookup(uint64_t pts_us, uint32_t *cycle, int64_t *residual_us)
 		return -1;
 	}
 
-	/* ---- 已锁定: 输出结果 + 残差入窗 ---- */
+	/* ---- 已锁定: 最近锚点也隔了超过半周期 → 没有本拍的锚点(典型: 手套流已停、相机还在出帧,
+	 * 或 RV 卡顿漏读了若干拍) → 归属不可靠, 不输出、不入统计, 由 recorder 记成 "-cycle"。 ---- */
+	if (llabs(best) > A_HALF_US) { pthread_mutex_unlock(&g_mtx); return -1; }
 	g_resid_n++;
 	g_rwin[g_rhead] = best;
 	g_rhead = (g_rhead + 1) % R_WIN;
