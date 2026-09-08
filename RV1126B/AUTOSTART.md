@@ -118,13 +118,18 @@ adb shell "pkill -f RkLunch-GLOVEDAQ; killall -9 glove_daq_rv"
 
 ## 六、以太网(2026-09-08)
 
-接口名是 **`end0`**(Debian/systemd 可预测命名,不是 eth0)。V4 板与 PC 千兆网卡直连实测
-`Link is Up - 1Gbps/Full`。直连没有 DHCP,板子用 NetworkManager 配了持久固定 IP:
+接口名是 **`end0`**(Debian/systemd 可预测命名,不是 eth0)。V4 板 RJ45 线序镜像反接,用户自制
+纠正线后可协商 1Gbps/Full,但**板→PC 方向几乎全是错误帧**(PC 网卡 ReceivedPacketErrors ≈ 板子
+发出帧数),PC→板方向干净;ping 零星成功,scp/ssh 不可用。强制 100M、关 EEE 无改善 → 线缆某对
+仍有问题;根治靠 V5 改线序。
+
+直连没有 DHCP,板子用 NetworkManager 配了持久固定 IP(**与 PC "以太网"网卡的 192.168.1.100 同网段**):
 
 ```bash
-nmcli con add type ethernet ifname end0 con-name lab ipv4.method manual ipv4.addresses 192.168.100.2/24 ipv6.method ignore
+nmcli con add type ethernet ifname end0 con-name lab ipv4.method manual ipv4.addresses 192.168.1.2/24 ipv6.method ignore
 nmcli con up lab          # 配置文件 /etc/NetworkManager/system-connections/lab.nmconnection(rootfs, 重烧丢)
+# 排障用: 强制 100M  nmcli con mod lab 802-3-ethernet.speed 100 802-3-ethernet.duplex full; 恢复 speed 0 duplex ''
 ```
-PC 侧把网卡 IPv4 设为 `192.168.100.1/255.255.255.0`,然后 `ping 192.168.100.2`、`ssh root@192.168.100.2`、
-`scp -r root@192.168.100.2:/mnt/sd/daq/<段> .`。千兆下拉数据比 adb(USB2)快得多。
+PC 侧:`ping 192.168.1.2`、`ssh root@192.168.1.2`、`scp -r root@192.168.1.2:/mnt/sd/daq/<段> .`
+(Windows 防火墙"公用网络"默认不回 ICMP,板子 ping PC 不通是正常的)。
 ⚠ 两只手套同时上网时 IP 会冲突——量产前要按板子分配不同地址(可按序列号派生,待做)。
