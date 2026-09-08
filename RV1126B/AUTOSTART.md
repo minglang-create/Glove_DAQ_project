@@ -119,9 +119,12 @@ adb shell "pkill -f RkLunch-GLOVEDAQ; killall -9 glove_daq_rv"
 ## 六、以太网(2026-09-08)
 
 接口名是 **`end0`**(Debian/systemd 可预测命名,不是 eth0)。V4 板 RJ45 线序镜像反接,用户自制
-纠正线后可协商 1Gbps/Full,但**板→PC 方向几乎全是错误帧**(PC 网卡 ReceivedPacketErrors ≈ 板子
-发出帧数),PC→板方向干净;ping 零星成功,scp/ssh 不可用。强制 100M、关 EEE 无改善 → 线缆某对
-仍有问题;根治靠 V5 改线序。
+纠正线后可协商 1Gbps/Full,但**板→PC 方向每一帧都被 PC 网卡判为错帧**(PC ReceivedPacketErrors
+增量 = 板子发出帧数;板子发 ARP 后 PC 邻居表仍 Unreachable),PC→板方向干净(广播帧完整到达)。
+**把网线两头对调后故障方向不变**,强制 100M、板侧关 EEE 均无改善 → 不是线缆某一对的方向问题,
+而是板子发射侧进线缆的配对/极性(RJ45 磁座接法)本身不对,线缆很难补救;根治靠 V5 改线序。
+Windows 侧注意:ARP 失败后会把地址缓存为 Unreachable 并暂停发 ARP(表现为"无法访问目标主机"),
+排障时先 `Remove-NetNeighbor -IPAddress <板IP>`(管理员);建议关掉网卡"环保节能/节能乙太网路"。
 
 直连没有 DHCP,板子用 NetworkManager 配了持久固定 IP(**与 PC "以太网"网卡的 192.168.1.100 同网段**):
 
