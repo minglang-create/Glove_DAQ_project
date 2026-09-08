@@ -1,7 +1,7 @@
 /* =============================================================================
  * recorder.h —— 分段落盘(SD 卡, exFAT)
  *   <base>/<虚拟时间YYYYMMDDHHMM>_seg_<段号>/   (虚拟时间: 见 recorder.c vtime_init 注释)
- *     cam0.h265 cam1.h265   两路裸码流(顺序追加, IPPP 无B帧)
+ *     cam0.h264 cam1.h264   两路裸码流(顺序追加, IPPP 无B帧; -c h265 时为 .h265)
  *     pairs.csv             pair_seq,seq0,seq1,pts0,pts1,dpts_us,cycle,residual_us,
  *                           off0,len0,off1,len1  (off=本段码流文件内字节偏移)
  *     glove.bin             原始 2690B 数据帧顺序追加
@@ -34,6 +34,7 @@ typedef struct {
 	int    fsync_sec;      /* 周期 fsync 间隔(秒), 默认 5, 0=关 */
 	int    rotate_min;     /* 按时间切段(分钟), 默认 10, 0=关 */
 	double min_free_gb;    /* 剩余空间阈值(GB), 默认 2.0; 0=完全不检查存储(调试用) */
+	int    cam_h265;       /* 码流文件扩展名: 1=cam0.h265 0=cam0.h264(与实际编码一致) */
 } rec_cfg_t;
 
 /* 自检: base 所在文件系统必须是 SD 卡(/dev/mmcblk1*)且剩余 ≥ min_free_gb。

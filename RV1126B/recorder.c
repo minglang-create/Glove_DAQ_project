@@ -25,6 +25,8 @@ static unsigned g_seg = 0;                /* 已开过的段数 */
 static uint64_t g_seg_t0_ms = 0;          /* 当前段开始时刻(切段计时) */
 static char     g_dir[400];               /* 当前段目录(落盘报告用) */
 static char     g_prefix[24] = "000000000000";   /* 本次开机的虚拟时间 YYYYMMDDHHMM(目录名前缀) */
+static char     g_names[NF][20] = { "cam0.h264", "cam1.h264", "pairs.csv", "glove.bin", "glove.csv", "ext_joints.csv" };
+static char     g_namelist[128];                 /* "cam0.h264 cam1.h264 pairs.csv ..." 打印用 */
 static uint64_t g_npair, g_nglove, g_next, g_next_ok;   /* 本段已写行数(落盘报告用) */
 
 /* ---------- 只有 flush 线程/主线程碰的状态 ---------- */
@@ -193,11 +195,10 @@ static int open_seg_files(unsigned seg, FILE *out[NF], char *dir, size_t dl)
 {
 	snprintf(dir, dl, "%s/%s_seg_%03u", g_base, g_prefix, seg);
 	if (mkdir(dir, 0755) != 0) { printf("[rec] 建段目录失败 %s\n", dir); return -1; }
-	static const char *names[NF] = { "cam0.h265", "cam1.h265", "pairs.csv", "glove.bin", "glove.csv", "ext_joints.csv" };
 	static const char *modes[NF] = { "wb", "wb", "w", "wb", "w", "w" };
 	char p[400]; int ok = 1;
 	for (int i = 0; i < NF; i++) {
-		snprintf(p, sizeof(p), "%s/%s", dir, names[i]);
+		snprintf(p, sizeof(p), "%s/%s", dir, g_names[i]);
 		out[i] = fopen(p, modes[i]);
 		if (!out[i]) ok = 0;
 	}
@@ -217,7 +218,7 @@ static int open_seg_files(unsigned seg, FILE *out[NF], char *dir, size_t dl)
 /* 落盘报告: fsync 之后统计, 打印出来的大小就是已经在卡上的大小 —— "落盘了什么"一目了然 */
 static void seg_report(const char *dir, FILE *f[NF], uint64_t np, uint64_t ng, uint64_t ne, uint64_t ne_ok, double secs)
 {
-	static const char *names[NF] = { "cam0.h265", "cam1.h265", "pairs.csv", "glove.bin", "glove.csv", "ext_joints.csv" };
+	const char (*names)[20] = g_names;
 	double mb[NF] = {0};
 	for (int i = 0; i < NF; i++) {
 		struct stat st;
@@ -304,7 +305,7 @@ int rec_segment_start(void)
 	g_seg_t0_ms = now_ms();
 	g_active = 1;
 	pthread_mutex_unlock(&g_mtx);
-	printf("[rec] 开段 %s\n      写入: cam0.h265 cam1.h265 pairs.csv glove.bin glove.csv ext_joints.csv\n", dir);
+	printf("[rec] 开段 %s\n      写入: %s\n", dir, g_namelist);
 	return 0;
 }
 
@@ -374,7 +375,7 @@ static void do_rotate(void)
 	close_files(old);                      /* 旧段收口(fsync)在锁外 */
 	seg_report(odir, old, np, ng, ne, neok, secs);
 	close_files_final(old);
-	printf("[rec] 切段 → %s\n      写入: cam0.h265 cam1.h265 pairs.csv glove.bin glove.csv ext_joints.csv\n", dir);
+	printf("[rec] 切段 → %s\n      写入: %s\n", dir, g_namelist);
 }
 
 static void *flush_thread(void *arg)
@@ -415,6 +416,9 @@ int rec_open(const char *base, const rec_cfg_t *cfg)
 {
 	snprintf(g_base, sizeof(g_base), "%s", base);
 	g_cfg = *cfg;
+	snprintf(g_names[0], sizeof(g_names[0]), "cam0.%s", cfg->cam_h265 ? "h265" : "h264");
+	snprintf(g_names[1], sizeof(g_names[1]), "cam1.%s", cfg->cam_h265 ? "h265" : "h264");
+	snprintf(g_namelist, sizeof(g_namelist), "%s %s %s %s %s %s", g_names[0], g_names[1], g_names[2], g_names[3], g_names[4], g_names[5]);
 	if (mkdir(g_base, 0755) != 0) {
 		struct stat st;
 		if (stat(g_base, &st) != 0 || !S_ISDIR(st.st_mode)) {

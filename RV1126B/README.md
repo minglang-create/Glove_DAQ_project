@@ -27,6 +27,7 @@ adb shell /oem/usr/bin/glove_daq_rv          # 正式流程(按键触发)
 | `-V` | 逐帧校验 STM32 假数据(协议实现验收) |
 | `-w imu` / `joint` / `tactile` / `all` | 终端可视化视图 |
 | `-A` | 台架直通(STM32 AUTOSTART=1 时) |
+| `-c h264\|h265` | 视频编码,**默认 h264**(H.265 专利收费风险);同码率 H.264 画质略低,可配 `-b 15000` |
 | `-v` | 相机初始化时显示 SDK 全部日志(默认收进 `/tmp/cam_init.log`,只留一行摘要) |
 | `-o <dir>` | 落盘基目录(默认 `/mnt/sd/daq`,即 SD 卡;`none`=不落盘) |
 | `-U <dev>[:baud][:trig\|free]` | 外接转接板 21 路关节 ADC 串口。**默认已启用** `/dev/ttyS0:460800:trig`;`-U none` 关闭;`:free` 切备用模式。见 [docs/EXT_UART.md](docs/EXT_UART.md) |

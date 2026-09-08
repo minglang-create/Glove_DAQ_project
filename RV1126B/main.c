@@ -24,6 +24,8 @@
  *   -X           不碰相机(纯链路调试)
  *   -v           相机初始化时显示 SDK 全部日志(默认收进 /tmp/cam_init.log, 只留一行摘要)
  *   -W/-H/-b     相机宽/高/码率kbps(默认 1920/1080/10240)
+ *   -c <h264|h265>  视频编码(默认 ★h264★: H.265 专利池分裂、设备/内容都可能被收费;
+ *                H.264 核心专利多已到期。同码率 H.264 画质略低, 可配 -b 15000 补偿)
  * 按键: 空闲短按=开采; 任何时候长按2s=落盘+0x5F01 复位 STM32+程序重启回待机(之后可断电或再短按开采)
  * 信号: USR2=模拟短按  USR1=发0x5F01重新自检并重启  INT/TERM=优雅退出
  * ============================================================================= */
@@ -66,10 +68,11 @@ int main(int argc, char *argv[])
 	cfg.rec.fsync_sec = 5; cfg.rec.rotate_min = 10; cfg.rec.min_free_gb = 2.0;   /* SD 落盘默认 */
 	cfg.ext_dev = "/dev/ttyS0"; cfg.ext_baud = 460800; cfg.ext_trig = 1;         /* 外接 ADC 串口默认开(2026-09-07) */
 	cfg.cam.width = 1920; cfg.cam.height = 1080; cfg.cam.bitrate_kbps = 10240;  /* 相机默认(与 cam_pipeline 一致) */
+	cfg.cam.codec_h265 = 0;                                                       /* 默认 H.264(2026-09-08, 专利风险) */
 	g_argv = argv;
 
 	int ch, a, b;
-	while ((ch = getopt(argc, argv, "D:S:G:K:o:w:r:W:H:b:F:T:M:U:VAXvh")) != -1) {
+	while ((ch = getopt(argc, argv, "D:S:G:K:o:w:r:W:H:b:c:F:T:M:U:VAXvh")) != -1) {
 		switch (ch) {
 		case 'D': spidev = optarg; break;
 		case 'S': hz = (uint32_t)strtoul(optarg, NULL, 0); break;
@@ -81,6 +84,7 @@ int main(int argc, char *argv[])
 		case 'W': cfg.cam.width = atoi(optarg); break;
 		case 'H': cfg.cam.height = atoi(optarg); break;
 		case 'b': cfg.cam.bitrate_kbps = atoi(optarg); break;
+		case 'c': cfg.cam.codec_h265 = (strcmp(optarg, "h265") == 0 || strcmp(optarg, "hevc") == 0); break;
 		case 'U': {
 			if (strcmp(optarg, "none") == 0) { cfg.ext_dev = NULL; break; }   /* -U none = 关闭 */
 			static char ubuf[128]; snprintf(ubuf, sizeof(ubuf), "%s", optarg);
@@ -102,7 +106,8 @@ int main(int argc, char *argv[])
 		}
 	}
 	cfg.rec_dir = rec_dir;
-	cfg.cam.codec_h265 = 1;
+	cfg.rec.cam_h265 = cfg.cam.codec_h265;
+	/* codec 默认在 getopt 前已设(见上); 这里不再强制 H.265 */
 	setvbuf(stdout, NULL, _IOLBF, 0);
 
 	printf("== Glove_DAQ_RV1126B (协议契约V1第四次修订) pid=%d ==\n", getpid());

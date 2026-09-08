@@ -234,9 +234,9 @@ int fsm_run(const fsm_cfg_t *cfg)
 						break;
 					}
 					cam_on = 1;
-					printf("[cam] 双摄已启动: %s, %dx%d@60 H.265 %dkbps (SDK 初始化日志 → /tmp/cam_init.log, -v 直接显示)\n",
+					printf("[cam] 双摄已启动: %s, %dx%d@60 %s %dkbps (SDK 初始化日志 → /tmp/cam_init.log, -v 直接显示)\n",
 					       cam_hw_sync_ok() ? "硬同步 cam0主/cam1从" : "★软同步(未探到硬同步)★",
-					       cfg->cam.width, cfg->cam.height, cfg->cam.bitrate_kbps);
+					       cfg->cam.width, cfg->cam.height, cfg->cam.codec_h265 ? "H.265" : "H.264", cfg->cam.bitrate_kbps);
 				}
 				glove_queue_pkt(GLV_PKT_START, NULL);  /* 0xC101 = 相机就绪回执 */
 				t_frame0 = now_ms();

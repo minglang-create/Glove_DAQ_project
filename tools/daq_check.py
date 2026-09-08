@@ -11,7 +11,7 @@ daq_check.py —— 手套采集数据【上位机验收工具】(纯标准库, 
 
 一段数据 = <虚拟时间YYYYMMDDHHMM>_seg_<段号>/ 下 6 个文件, 全部按 cycle(周期号)对齐
 (虚拟时间: 每次上电 +10 小时的递增计数, 不是真实时钟; 同一次开机内段号递增):
-  cam0.h265 cam1.h265  两路 H.265 裸码流(ffplay -f hevc cam0.h265 可播), 每帧在文件里的位置见 pairs.csv
+  cam0.h264 cam1.h264  两路 H.264 裸码流(ffplay -f h264 cam0.h264 可播; -c h265 时为 .h265/-f hevc), 每帧位置见 pairs.csv
   pairs.csv            相机: 一行 = 一对配好的左右帧 → 属于哪个 cycle、两路各在码流文件的 off/len
   glove.bin            手套: 原始 2690 字节 SPI 数据帧顺序追加(协议 v2 布局, 大端)
   glove.csv            手套索引: cycle, PA1 沿内核时间戳, 该帧在 glove.bin 的偏移
@@ -138,12 +138,13 @@ def check_segment(seg, export=False, frame_no=None):
         print(f"    关节缺失数/帧: 均值 {sum(miss)/len(miss):.1f}, 全 20 缺的帧 {sum(1 for x in miss if x == 20)}/{len(miss)}")
 
     # ---------- pairs.csv + h265 ----------
-    print("[相机 pairs.csv / cam0.h265 / cam1.h265]")
+    ext = 'h264' if os.path.isfile(os.path.join(seg, 'cam0.h264')) else 'h265'
+    print(f"[相机 pairs.csv / cam0.{ext} / cam1.{ext}]  (播放: ffplay -f {'h264' if ext=='h264' else 'hevc'} cam0.{ext})")
     pcsv = os.path.join(seg, 'pairs.csv')
     prow = list(csv.DictReader(open(pcsv, newline=''))) if os.path.isfile(pcsv) else []
-    h0, h1 = (os.path.getsize(os.path.join(seg, f)) if os.path.isfile(os.path.join(seg, f)) else -1 for f in ('cam0.h265', 'cam1.h265'))
+    h0, h1 = (os.path.getsize(os.path.join(seg, f)) if os.path.isfile(os.path.join(seg, f)) else -1 for f in (f'cam0.{ext}', f'cam1.{ext}'))
     if not prow:
-        warn(f"pairs.csv 空 (cam0.h265 {h0} B, cam1.h265 {h1} B) —— 相机没出帧或 -X 模式")
+        warn(f"pairs.csv 空 (cam0.{ext} {h0} B, cam1.{ext} {h1} B) —— 相机没出帧或 -X 模式")
     else:
         rel, unrel, resid, dpts, pts0 = [], 0, [], [], []
         off_ok = True; last_end0 = last_end1 = 0
