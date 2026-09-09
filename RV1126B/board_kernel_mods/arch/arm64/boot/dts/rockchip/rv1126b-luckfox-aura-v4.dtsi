@@ -63,10 +63,18 @@
 /delete-node/ &rgmii_phy;      /* 基础 dtsi 的 phy@1 地址不对, 删掉重建 */
 
 &mdio {
-	rgmii_phy_v4: phy@0 {
+	/* ★2026-09-09 更正★ 用 PHY 的真实 strap 地址 1, 不再用广播地址 0。
+	 * RTL8211F 的 PHY 地址由 CONFIG(strap)脚在 POR 时采样决定, 且【只能靠外部电阻改】
+	 * (寄存器改不了——要先知道地址才能通信)。本板没加 strap 电阻, 于是取 PHY 自己
+	 * 在 POR 期间内建的拉(手册引脚表 PU/PD 标记):
+	 *     RXD3=PHYAD[0] 内部上拉 →1 ; RXC=PHYAD[1] 内部下拉 →0 ; RXCTL=PHYAD[2] 下拉 →0
+	 *   ⇒ PHYAD = 001 = 1
+	 * 实测 mdioscan: 地址 1 有 PHY(ID 0x001CC916), 地址 0 也应答——因为手册 Note 1 规定
+	 *   "PHYAD=0 是 MDIO 广播, 每个 PHY 都应答"。所以原来写 reg=<0> 也能通, 但那是广播:
+	 *   广播【写】会打到总线上所有器件, 将来若挂第二个 MDIO 器件就会互相干扰。故改用 1。 */
+	rgmii_phy_v4: phy@1 {
 		compatible = "ethernet-phy-ieee802.3-c22";
-		reg = <0x0>;           /* ★实测★ V4 板 RTL8211F strap 地址=0
-					  (devmem 扫 MDIO: 地址0 ID=0x001CC916) */
+		reg = <0x1>;
 	};
 };
 

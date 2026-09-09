@@ -152,3 +152,55 @@ txid/rxid/rgmii` 延迟模式全都救不回来**(因为根本不是时序问题
 pinctrl,必须重跑 probe(`unbind`+`bind` 以太网驱动)或改 dts 后重启。
 
 **下版布线**:若仍要保留音频功放使能,务必换一根不与 `ethm1_*` 组冲突的 GPIO。
+
+---
+
+## 附:RTL8211F 的 strap(CONFIG)脚 —— 哪些必须外部电阻,哪些靠寄存器就行
+
+**2026-09-09 对着 RTL8211F 数据手册 + 板上实测厘清。** 这些 CONFIG 脚**复用在 RX 组上**,
+PHY 在自己 POR 那一刻采样它们;此时内核还没跑,**设备树/SoC 侧的内部拉都影响不到**。
+不加电阻时的默认值来自 **PHY 自己在 POR 期间内建的上拉/下拉**(手册引脚表的 `PU`/`PD` 标记):
+
+| CONFIG 脚 | 功能 | PHY 内部默认 | 寄存器能否覆盖 | 要不要外部电阻 |
+|---|---|---|---|---|
+| RXD3 | PHYAD[0] | **PU → 1** | ❌ 鸡生蛋(需先知地址才能通信) | 单 PHY 不用 |
+| RXC | PHYAD[1] | PD → 0 | ❌ | 单 PHY 不用 |
+| RXCTL | PHYAD[2] | PD → 0 | ❌ | 单 PHY 不用 |
+| RXD2 | PLLOFF | PD → 0 | ✅ ALDPS 寄存器 | 不用 |
+| RXD1 | **TXDLY** | PD → 0 | ✅ **实测被驱动覆盖成 1** | 不用 |
+| RXD0 | RXDLY | PU → 1 | ✅ | 不用 |
+| LED0 | CFG_EXT | 取决于 LED 电路 | ❌ POR 时定死 | **必须核对** |
+| LED1/LED2 | CFG_LDO[1:0] | 取决于 LED 电路 | ❌ | **必须核对** |
+
+**证物**:strap 默认给 TXDLY=0,但读 PHY 页 0xd08 寄存器 0x11 = `0x0109`(bit8=1)——
+Linux realtek 驱动按 `phy-mode="rgmii-id"` 覆盖了 strap。**故 TXDLY/RXDLY/PLLOFF 三个
+strap 电阻可以全省掉**,只要 dts 里 phy-mode 选对。
+
+**PHY 地址**:默认 strap 算出 PHYAD=001=**1**;实测 `mdioscan` 显示地址 1 有 PHY
+(ID 0x001CC916),地址 0 也应答——因为手册 Note 1 规定 **PHYAD=0 是 MDIO 广播,
+每个 PHY 都应答**。所以早前 dts 写 `reg=<0>` 也能通,但那是广播(广播**写**会打到总线上
+所有器件)。**已改为 `phy@1 / reg=<0x1>`**,冷启动实测 `PHY [stmmac-0:01]`、千兆链路、
+ping 6/6 通、SSH 可连、TXDLY 仍为 0x0109。
+
+**★V5 最要当心的一条:LED 脚就是 CFG_EXT/CFG_LDO strap,决定 RGMII I/O 的供电方式与电压★**
+(内部 LDO 还是外部供电;3.3/2.5/1.8/1.5V)。手册明说 LED 输出与 CFG 脚复用、
+"external combinations required for strapping and LED usage must be considered to avoid contention"。
+**LED 限流电阻接 3.3V 还是接 GND,直接决定 RGMII I/O 电压档位,而这个寄存器改不了。**
+V5 若改动 LED 电路,务必对着 SoC GPIO5 那组的 IO 域电压重新核算。
+
+**手册明确要求的外部电阻**:MDIO 需 **1.5kΩ 上拉**("The MDIO pin needs a 1.5k Ohm
+pull-up resistor")。现板能读写 PHY 说明勉强够用,V5 建议按手册补上。
+
+### V5 以太网电阻清单
+
+```
+不加: RGMII 12 根数据/时钟/控制线的上下拉(全程被驱动, 永不悬空)
+不加: RXD0/RXD1/RXD2 的 strap 电阻(TXDLY/RXDLY/PLLOFF 靠寄存器覆盖)
+不加: RXD3/RXC/RXCTL 的 PHYAD strap(单 PHY, 默认地址 1 即可; 多 PHY 才需要)
+  加: MDIO 上拉 1.5k(手册要求)
+  加: PHY nRST 上拉 10k(软件跑起来之前要有确定电平)
+核对: LED0/1/2 电阻接法 = CFG_EXT/CFG_LDO strap → 决定 RGMII I/O 电压, 软件救不了
+可选: RGMII 串联 22~33Ω(先用 dts 驱动强度 drv_level 调, 不行再加)
+必改: RJ45 磁座线序(见 P0-1)
+标注: ethm1_* 那 14 根脚"以太网专用, 勿被其他外设复用"(这次 TXD1 被音频抢的教训)
+```
