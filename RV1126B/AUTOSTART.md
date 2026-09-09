@@ -116,23 +116,29 @@ adb shell "pkill -f RkLunch-GLOVEDAQ; killall -9 glove_daq_rv"
   仍可用于临时全禁自启,但现在有 `/userdata/glove_noauto` 更合适(模块照常加载)。
 
 
-## 六、以太网(2026-09-08)
+## 六、以太网(2026-09-09 已跑通)
 
-接口名是 **`end0`**(Debian/systemd 可预测命名,不是 eth0)。V4 板 RJ45 线序镜像反接,用户自制
-纠正线后可协商 1Gbps/Full,但**板→PC 方向每一帧都被 PC 网卡判为错帧**(PC ReceivedPacketErrors
-增量 = 板子发出帧数;板子发 ARP 后 PC 邻居表仍 Unreachable),PC→板方向干净(广播帧完整到达)。
-**把网线两头对调后故障方向不变**,强制 100M、板侧关 EEE 均无改善 → 不是线缆某一对的方向问题,
-而是板子发射侧进线缆的配对/极性(RJ45 磁座接法)本身不对,线缆很难补救;根治靠 V5 改线序。
-Windows 侧注意:ARP 失败后会把地址缓存为 Unreachable 并暂停发 ARP(表现为"无法访问目标主机"),
-排障时先 `Remove-NetNeighbor -IPAddress <板IP>`(管理员);建议关掉网卡"环保节能/节能乙太网路"。
+接口名 **`end0`**(Debian/systemd 可预测命名,不是 eth0)。V4 板需**自制换序网线**
+(RJ45 线序镜像反接,见 BOARD_V5_CHANGELIST P0-1)。
 
-直连没有 DHCP,板子用 NetworkManager 配了持久固定 IP(**与 PC "以太网"网卡的 192.168.1.100 同网段**):
+**曾经的坑**:dts 里音频 `pa-ctl-gpios` 抢了 RGMII TXD1(pin 176 = GPIO5_C0),
+导致"能协商千兆、PC→板 0 错、板→PC 全 CRC 错帧、ping 不通"。已在 V4 dtsi
+`/delete-property/ pa-ctl-gpios` 修掉,冷启动即正常。详见 BOARD_V5_CHANGELIST 末尾。
+
+**实测(冷启动,无需手动操作)**:`carrier=1 speed=1000`、PC ping **8/8 通 平均 1ms**、
+SSH 22 端口可连、SD 卡上 `dd` 写 40MB 达 55MB/s。
+
+直连没有 DHCP,板子用 NetworkManager 配了持久固定 IP(与 PC "以太网"网卡 192.168.1.100 同网段):
 
 ```bash
 nmcli con add type ethernet ifname end0 con-name lab ipv4.method manual ipv4.addresses 192.168.1.2/24 ipv6.method ignore
 nmcli con up lab          # 配置文件 /etc/NetworkManager/system-connections/lab.nmconnection(rootfs, 重烧丢)
-# 排障用: 强制 100M  nmcli con mod lab 802-3-ethernet.speed 100 802-3-ethernet.duplex full; 恢复 speed 0 duplex ''
 ```
-PC 侧:`ping 192.168.1.2`、`ssh root@192.168.1.2`、`scp -r root@192.168.1.2:/mnt/sd/daq/<段> .`
-(Windows 防火墙"公用网络"默认不回 ICMP,板子 ping PC 不通是正常的)。
+PC 侧:`ping 192.168.1.2`、`ssh root@192.168.1.2`、
+`scp -r root@192.168.1.2:/mnt/sd/daq/<段> D:\glove_data\`(拉数据比 adb 快得多)。
+Windows 若把地址缓存成 Unreachable 会停发 ARP(表现为"无法访问目标主机"),
+管理员执行 `Remove-NetNeighbor -IPAddress 192.168.1.2` 清掉。
 ⚠ 两只手套同时上网时 IP 会冲突——量产前要按板子分配不同地址(可按序列号派生,待做)。
+
+**排障工具**:`mdio`(已推到 `/oem/usr/bin/`)可运行时读写 PHY 寄存器,
+例 `mdio end0 r 0xd08 0x11`(RTL8211F 的 TXDLY 在 bit8)、`mdio end0 w 0xd08 0x11 0x0009`。

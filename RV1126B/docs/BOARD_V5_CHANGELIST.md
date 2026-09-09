@@ -7,15 +7,15 @@
 
 ## P0 —— 必改(功能性缺陷)
 
-### 1. RJ45 磁座四对镜像反接 → 以太网不可用(维持 P0)
+### 1. RJ45 磁座四对镜像反接 → 必须用自制换序网线(维持 P0)
 
-> 2026-09-08 记录:用户**自制了一根纠正线序的网线**,PHY 能协商到 1Gbps/Full、PC→板方向
-> 收包 0 错误,但**板→PC 方向几乎每帧都被 PC 网卡判为错误帧**(PC ReceivedPacketErrors ≈ 板子
-> 发出的帧数),ping 只有零星成功,TCP 不可用;强制 100M、关 EEE 均无改善 → 手工线某一对
-> 仍不对/接触不良。板子端线序错误不改,靠线缆纠正很难做稳。**结论不变:V5 必须按下面改线序。**
+**症状**:接标准网线时 PHY(RTL8211F)驱动正常挂载、MDIO 可读写(ID 0x001CC916),
+`ANLPAR=0` 双向失聪、灯不亮、强制 MDI/MDIX 均无链路。**用户自制换序网线后可正常协商
+1Gbps/Full 并跑通(实测 scp 拉 40MB)**,说明就是板端线序问题,不是 PHY/磁变坏。
 
-**症状**:PHY(RTL8211F)驱动正常挂载、MDIO 可读写(ID 0x001CC916),但
-`ANLPAR=0` 双向失聪、RJ45 灯全不亮、强制 MDI/MDIX 两种模式均无链路。
+> ★2026-09-09 重要澄清★ 期间出现的"板→PC 每帧都是 CRC 错帧、PC→板 0 错"**不是** RJ45
+> 线序造成的(1000BASE-T 四对双向同时工作,线序错会两个方向一起坏),而是 **dts 里音频
+> `pa-ctl-gpios` 抢了 RGMII TXD1** —— 详见本清单末尾"已修软件坑"一节。两件事互相独立。
 
 **根因**:V4 把 TRX0..3 按"组内可互换"的传言接成了**四对镜像**
 (TRX0→磁座 9/8=D 对、TRX1→6/7=C 对、TRX2→4/5=B 对、TRX3→3/2=A 对)。
@@ -34,6 +34,7 @@ MDI 规则:对内 P/N 可换(极性自纠)、A↔B + C↔D 交叉可自纠(MDIX)
 | TRX3± | RJ1 的 **8/9**(D 对) |
 
 P/N 顺手接即可(极性自纠)。**RJ1.1 保持 100nF×3 到 GND,勿接 VCC。**
+改好后即可用普通网线,不再依赖自制线。
 
 ### 2. XHS 未引到 STM32 → 从机手套的相机带不起来
 
@@ -120,3 +121,34 @@ ADC 只能占用它 → **串口控制台被迫放弃**(见 EXT_UART.md)。
 - **USB peripheral**:自研板无 HUSB311,dts 写死 `dr_mode="peripheral"` 后 adb/图传正常;
 - **IMU FSYNC 挂在 XVS(3.3V)网上**:两只手套的 IMU 帧同步输入都能收到主机 XVS,
   将来 IMU 采样可硬件对齐到 XVS —— 这是 V4 的意外收获,保留。
+
+---
+
+## 附:已修的软件坑(不需要改板,但下版布线要避开)
+
+### 音频 `pa-ctl-gpios` 抢了 RGMII TXD1(2026-09-09 修复)
+
+基座 `rv1126b-luckfox-aura.dtsi` 里 `&acdcdig_dsm` 的
+`pa-ctl-gpios = <&gpio5 RK_PC0 GPIO_ACTIVE_HIGH>`(音频功放使能)与 RGMII 直接冲突:
+
+```
+pin 176 = GPIO5_C0 = eth_txd1_m1   ← RGMII 的 TXD1 数据线
+```
+
+开机顺序是"以太网先 probe 套好 pinctrl → 音频后 probe",而 Rockchip pinctrl 在
+`gpiod_direction_output()` 时**会把引脚 IOMUX 改回 GPIO 功能并驱动低** → 每个数据
+半字节的 bit1 恒为 0 → 板子发出的每一帧到对端都是 CRC 错帧;RX 引脚没被抢,收方向完好。
+
+**症状指纹**(以后遇到类似问题可对照):能协商 1Gbps/Full、PC→板 0 错误、板→PC 好帧 0
+错帧一堆(且错帧数 > 发出帧数,一帧被拆成多个)、ping 零星或全丢、**四种 `rgmii-id/
+txid/rxid/rgmii` 延迟模式全都救不回来**(因为根本不是时序问题)。
+
+**定位方法**:`/sys/kernel/debug/pinctrl/*/pinmux-pins` 里找 RGMII 引脚,正常应是
+`(GPIO UNCLAIMED)`,被抢的那根会显示 `gpio5:176`;再 `grep gpio-176 /sys/kernel/debug/gpio`
+看标签(这里是 `pa-ctl`)。
+
+**修法**:`rv1126b-luckfox-aura-v4.dtsi` 里 `&acdcdig_dsm { /delete-property/ pa-ctl-gpios; };`
+(采集板不接功放)。**注意:运行时只解绑音频驱动不够** —— `ip link down/up` 不会重新套
+pinctrl,必须重跑 probe(`unbind`+`bind` 以太网驱动)或改 dts 后重启。
+
+**下版布线**:若仍要保留音频功放使能,务必换一根不与 `ethm1_*` 组冲突的 GPIO。
