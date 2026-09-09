@@ -70,6 +70,21 @@
 	};
 };
 
+/* ★★2026-09-09 实测踩坑★★ 基座 aura.dtsi 里 &acdcdig_dsm 的
+ * pa-ctl-gpios = <&gpio5 RK_PC0>(音频功放使能)与 RGMII 冲突:
+ *   pin 176 = GPIO5_C0 = eth_txd1_m1 —— 正是 RGMII 的 TXD1 数据线。
+ * 开机顺序是"以太网先 probe 套好 pinctrl → 音频后 probe", 而 Rockchip pinctrl 在
+ * gpiod_direction_output() 时会把引脚 IOMUX 改回 GPIO 并驱动低 → 每个数据半字节
+ * bit1 恒 0 → 板子发出的每一帧到对端都是 CRC 错帧; RX 引脚没被抢, 所以收方向完好。
+ * 症状: 能协商 1Gbps/Full、PC→板 0 错、板→PC 全错帧、ping 不通, 且四种 rgmii-*
+ * 延迟模式都救不回来(因为根本不是时序问题)。
+ * 验证: 运行时解绑 rk_dsm 释放 GPIO + 重绑 rk_gmac-dwmac 重套 pinctrl → 立刻
+ *   好帧 13/错帧 0、ping 3/3 通。
+ * 故本板删除该属性(采集板不接功放)。若将来要用功放使能, 换一根不与 RGMII 冲突的脚。 */
+&acdcdig_dsm {
+	/delete-property/ pa-ctl-gpios;
+};
+
 &gmac {
 	phy-handle = <&rgmii_phy_v4>;
 	phy-mode = "rgmii-id";
