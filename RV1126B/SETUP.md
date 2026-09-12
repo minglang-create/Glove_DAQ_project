@@ -14,6 +14,42 @@
 
 所以搭环境 = **先拿到官方 SDK,再把本仓库"种"进它的 `project/app/` 目录**。
 
+## 0b. 快速路径:直接用打包好的 SDK(Google Drive)——推荐第一次接手的人走这条
+
+我们把**已经配好、已经编译过一次**的整个 SDK 目录打成了一个包放在 Google Drive,拿到后不用做下面 §2–§7 的任何一步。
+
+Drive 上有三样东西:
+
+| 文件 | 内容 | 大小 |
+|---|---|---|
+| `glove_sdk_20260912.tar.xz`(+ `.sha256`) | 整个 `~/Aura-sdk`:官方 SDK + 本仓库(已在 `project/app/` 里)+ 内核/设备树改动 + rootfs overlay + 全部编译产物 | ≈10 GB |
+| `glove_windows_tools_20260912.zip` | Windows 侧工具:RK 驱动 DriverAssitant、烧录工具 SocToolKit、adb | 76 MB |
+| `glove_release_20260912_hwsync/` | 现成可烧的 `image/` 目录 + [FLASH_GUIDE.md](FLASH_GUIDE.md)(只想烧不想编译的人用这个就够) | 1.8 GB |
+
+包里**故意没带**两样:Luckfox 出厂镜像目录 `IMAGE/`(想恢复官方系统时去 wiki 下载页取)和原始 SDK 压缩包
+`Luckfox_Aura_SDK_260521.tar.gz`(同上)。其余一个文件不少。
+
+在你的 Ubuntu 22.04(WSL2 或虚拟机;别的版本没验证过)里:
+
+```bash
+# 1) 装编译依赖(只做一次;= §1 的 SDK 自带清单 + 解压/打包会用到的 xz/rsync/bc/cpio)
+sudo apt-get update && sudo apt-get install -y device-tree-compiler texinfo gperf make gzip \
+     gcc-multilib g++-multilib xz-utils rsync bc cpio
+
+# 2) 校验 + 解压到家目录(必须是 ~/Aura-sdk 这个相对位置;解压需要 sudo,包里有 root 属主的文件)
+sha256sum -c glove_sdk_20260912.tar.xz.sha256
+cd ~ && sudo tar -xf /path/to/glove_sdk_20260912.tar.xz      # 解完得到 ~/Aura-sdk,10–20 分钟
+
+# 3) 确认能用(不用重编任何东西)
+cd ~/Aura-sdk && ls -l .BoardConfig.mk && ls output/image/boot.img
+```
+
+然后直接跳到 **§8 核对** 和 **§10 日常迭代**。改应用代码只需 `sudo ./build.sh app` → 拷 app_out → `sudo ./build.sh firmware`(§10 原文)。
+烧录看 [FLASH_GUIDE.md](FLASH_GUIDE.md)(Windows 工具在上面那个 zip 里)。
+
+> 解压路径为什么要求 `~/Aura-sdk`:`media/` 等子模块的 cmake 缓存里记着编译时的绝对路径。上层应用开发不会重编这些模块,
+> 所以放在任何用户的家目录下都没事;万一哪天真要重编 `media` 报路径错,删掉 `media/out` 重新 `sudo ./build.sh media` 即可。
+
 ## 1. 主机要求
 
 - **Ubuntu 22.04**(或 WSL2 跑 Ubuntu 22.04;本项目实际就是这么开发的);
@@ -113,9 +149,13 @@ ls -l output/out/oem/usr/bin/{glove_daq_rv,RkLunch-GLOVEDAQ.sh}   # 应存在, �
 
 ## 9. 烧录
 
-拿到板子,进 loader/maskrom 模式,用 RKDevTool(Windows 工具,官方 SDK 下载页有)
-或 adb 整包烧 `output/image/update.img`。首次烧录建议烧整包,而不是单独 boot.img——
-整包会把 rootfs 的 overlay(`.rkapp=GLOVEDAQ`)也一起写进去。
+**这套 SDK 的 `update.img` 不含 rootfs**(rootfs 是"占满剩余空间"型分区,`tools/linux/Linux_Pack_Firmware/mk-update_pack.sh`
+对这类分区一律跳过,所以 `update.img` 只有 ~300MB)。而自启开关 `/etc/.rkapp=GLOVEDAQ` 正好在 rootfs 里——
+**只烧 `update.img` 的板子上电跑的还是官方 rkipc,不会自启**。
+
+正确做法:把 `output/image/` 整个目录当"整包",用 SocToolKit 的 **Download(分区下载)** 模式
+`Search Path...` 选中该目录 → 8 个分区全勾 → Download。逐步图文见 [FLASH_GUIDE.md](FLASH_GUIDE.md)
+(也是发给拿镜像不编译的团队的那份)。进 Loader 模式的按法以官方 wiki 为准:按住 RESET → 按住 BOOT → 松 RESET → 识别后松 BOOT。
 
 烧完上电,不用做任何配置就会自动跑起手套采集程序(参数/排障见 [README.md](README.md)、
 [AUTOSTART.md](AUTOSTART.md))。

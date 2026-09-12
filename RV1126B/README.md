@@ -6,6 +6,7 @@
 ## 快速上手
 
 > **第一次接手、SDK 还没搭起来?先看 [SETUP.md](SETUP.md)**——从零到能编译烧录的完整步骤。
+- 只烧录不编译(拿到 image/ 目录的团队):[FLASH_GUIDE.md](FLASH_GUIDE.md)
 > 下面假设 SDK 环境已经就位。
 
 ```bash
