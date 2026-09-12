@@ -5,6 +5,9 @@
 
 ## 快速上手
 
+> **第一次接手、SDK 还没搭起来?先看 [SETUP.md](SETUP.md)**——从零到能编译烧录的完整步骤。
+> 下面假设 SDK 环境已经就位。
+
 ```bash
 # 1) 本目录需放在 Rockchip SDK 的 app 下两层:
 #    ~/Aura-sdk/project/app/<clone 目录名>/RV1126B/

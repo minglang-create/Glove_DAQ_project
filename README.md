@@ -30,7 +30,8 @@ CYCLE 同源 → 跨手套直接按 CYCLE 对号。
 ## 从哪读起
 
 1. 本文件 —— 系统全貌;
-2. [RV1126B/README.md](RV1126B/README.md) —— 下位机上手、引脚表、**已知硬约束**;
+2. [RV1126B/README.md](RV1126B/README.md) —— 下位机上手、引脚表、**已知硬约束**
+   (第一次搭 SDK 环境?先看 [RV1126B/SETUP.md](RV1126B/SETUP.md));
 3. [RV1126B/ARCHITECTURE.md](RV1126B/ARCHITECTURE.md) —— 模块地图、线程模型、对齐引擎原理、落盘格式;
 4. [RV1126B/docs/PROTOCOL_V2.md](RV1126B/docs/PROTOCOL_V2.md) —— 字节级协议;
 5. [RV1126B/AUTOSTART.md](RV1126B/AUTOSTART.md) —— 板子开机自启机制(踩过坑,已厘清)。
