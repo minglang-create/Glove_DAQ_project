@@ -13,10 +13,13 @@
 //#include "rv1126b-luckfox-aura-cam-csi1.dtsi"
 //#include "rv1126b-luckfox-aura-dual-cam.dtsi"                  /* 双 IMX415 开发板+原厂模组(0x37/37.125M, 配imx415.c档位A) */
 //#include "rv1126b-luckfox-aura-dual-cam-daq.dtsi"            /* 双 IMX415 自研板+自研模组: i2c3/i2c4对调 + 0x1a + 27M(无硬同步版) */
-#include "rv1126b-luckfox-aura-dual-cam-daq-hwsync.dtsi"       /* ★V4板当前(2026-09-04 简化启动方案): cam0主/cam1从,
-                                                                  * cam0 自产 XVS+XHS(从机启动必须双信号,实验B实锤), STM32 改为捕获 XVS。
-                                                                  * V2/V3 也用这行(dpts -6µs 已验证) */
-//#include "rv1126b-luckfox-aura-dual-cam-daq-mcusync.dtsi"      /* 弃用: 双摄全从等 STM32 XVS——XHS 网没接 STM32, 从机永不出帧 */
+// ★切换相机同步拓扑: 下面两组 include 二选一, 整组一起注释/取消注释(每行都要 //)★
+//#include "rv1126b-luckfox-aura-dual-cam-daq-hwsync.dtsi"     /* cam0主/cam1从(2026-09-04 简化启动方案):
+//   cam0 自产 XVS+XHS(从机启动必须双信号, 实验B实锤), STM32 改为捕获 XVS。
+//   V2/V3 也用这组(dpts -6µs 已验证); ★glove_daq_rv 的采集流程需要这一组★ */
+#include "rv1126b-luckfox-aura-dual-cam-daq-mcusync.dtsi"        /* ★当前: 双摄全从, 等 STM32 供 XVS+XHS
+                                                                  * (2026-09-10 XVS+XHS 联合驱动测试; XHS 需飞线到 STM32)
+                                                                  * 测完切回上面 hwsync 行才能跑 glove_daq_rv 的采集流程 */
 //#include "rv1126b-luckfox-aura-dual-cam-devmod.dtsi"            /* 开发板接线 + 自研模组(0x1a/27M), 配imx415.c档位C */
 //#include "rv1126b-luckfox-aura-imx477.dtsi"                    /* 单 IMX477 (验证用) */
 //#include "rv1126b-luckfox-aura-imx477-imx415-dual.dtsi"        /* 异构双摄: IMX477(vir0)+IMX415(vir1) */
